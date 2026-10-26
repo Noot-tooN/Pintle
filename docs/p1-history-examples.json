@@ -1,0 +1,149 @@
+{
+  "source": "Final local P1 suite, 2026-10-26; four of 72 controlled histories. Full histories/checkpoints remain in ignored test-results/p1-*/lease-histories.json.",
+  "histories": [
+    {
+      "commit_order": [
+        0,
+        1,
+        2
+      ],
+      "expected": [
+        {
+          "code": "code_0",
+          "kind": "grant",
+          "revision": 2
+        },
+        {
+          "code": "code_0",
+          "kind": "release",
+          "revision": 3
+        },
+        {
+          "code": "code_0",
+          "kind": "grant",
+          "revision": 4
+        }
+      ],
+      "methods": [
+        "renew",
+        "release",
+        "acquire"
+      ],
+      "now": 1099,
+      "response_order": [
+        0,
+        1,
+        2
+      ],
+      "test": "TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply0"
+    },
+    {
+      "commit_order": [
+        1,
+        0,
+        2
+      ],
+      "expected": [
+        {
+          "code": "failed_precondition",
+          "kind": "error",
+          "revision": 0
+        },
+        {
+          "code": "code_0",
+          "kind": "release",
+          "revision": 2
+        },
+        {
+          "code": "code_0",
+          "kind": "grant",
+          "revision": 3
+        }
+      ],
+      "methods": [
+        "renew",
+        "release",
+        "acquire"
+      ],
+      "now": 1099,
+      "response_order": [
+        0,
+        1,
+        2
+      ],
+      "test": "TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply0"
+    },
+    {
+      "commit_order": [
+        0,
+        1,
+        2
+      ],
+      "expected": [
+        {
+          "code": "failed_precondition",
+          "kind": "error",
+          "revision": 0
+        },
+        {
+          "code": "failed_precondition",
+          "kind": "error",
+          "revision": 0
+        },
+        {
+          "code": "code_0",
+          "kind": "grant",
+          "revision": 2
+        }
+      ],
+      "methods": [
+        "renew",
+        "release",
+        "acquire"
+      ],
+      "now": 1100,
+      "response_order": [
+        0,
+        1,
+        2
+      ],
+      "test": "TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply0"
+    },
+    {
+      "commit_order": [
+        1,
+        0,
+        2
+      ],
+      "expected": [
+        {
+          "code": "failed_precondition",
+          "kind": "error",
+          "revision": 0
+        },
+        {
+          "code": "failed_precondition",
+          "kind": "error",
+          "revision": 0
+        },
+        {
+          "code": "code_0",
+          "kind": "grant",
+          "revision": 2
+        }
+      ],
+      "methods": [
+        "renew",
+        "release",
+        "acquire"
+      ],
+      "now": 1100,
+      "response_order": [
+        0,
+        1,
+        2
+      ],
+      "test": "TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply0"
+    }
+  ]
+}

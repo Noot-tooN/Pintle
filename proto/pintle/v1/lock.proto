@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package pintle.v1;
+
+option go_package = "pintle.local/spike/gen/go/pintle/v1;pintlev1";
+
+// Unpublished P2 lease service with durable server-owned waiting; no stability promise yet.
+service LockService {
+  // Retry ambiguous outcomes with the SAME request_id, attempt, and payload. Never GET.
+  rpc Acquire(AcquireRequest) returns (AcquireResponse);
+  rpc CancelPending(CancelPendingRequest) returns (CancelPendingResponse);
+  rpc TryAcquire(TryAcquireRequest) returns (TryAcquireResponse);
+  rpc Renew(RenewRequest) returns (RenewResponse);
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  rpc GetRequestStatus(GetRequestStatusRequest) returns (GetRequestStatusResponse);
+  rpc OpenSession(OpenSessionRequest) returns (OpenSessionResponse);
+  rpc AcknowledgeSession(AcknowledgeSessionRequest) returns (AcknowledgeSessionResponse);
+}
+
+// ResourceId is scoped by authenticated tenant identity, never by a caller's DO ID.
+message ResourceId {
+  string namespace = 1;
+  string key = 2;
+}
+
+message TryAcquireRequest {
+  ResourceId resource = 1;
+  string request_id = 2;
+  // A caller's attempt label, not a secret or ownership capability.
+  string holder_ref = 3;
+  // P1 requires 100..60000ms. Zero is rejected by the P1 server.
+  uint32 lease_ttl_ms = 4;
+  RequestAttempt attempt = 5;
+}
+
+message TryAcquireResponse {
+  oneof outcome {
+    GrantReceipt acquired = 1;
+    Contended contended = 2;
+  }
+  // A historical receipt is not evidence of present ownership.
+  bool replayed = 3;
+  LeaseObservation observation = 4;
+}
+
+// Immutable operation receipt. Consult observation for current lease validity.
+message GrantReceipt {
+  ResourceId resource = 1;
+  // Original acquisition ID, including in a Renew receipt. Renew's own request
+  // ID is its immutable label; P1.1 dedupe/status also requires session/sequence.
+  string request_id = 2;
+  string holder_ref = 3;
+  // Exact canonical decimal u64 strings, including above 2^53.
+  string fencing_token = 4;
+  string revision = 5;
+  // Secret 256-bit owner capability; never log it.
+  string lease_id = 6;
+  string expires_at_unix_ms = 7;
+}
+
+message Contended {}
+
+// Active is an authority observation, not permission to ignore future expiry.
+enum LeaseState {
+  LEASE_STATE_UNSPECIFIED = 0;
+  LEASE_STATE_ACTIVE = 1;
+  LEASE_STATE_EXPIRED = 2;
+  LEASE_STATE_RELEASED = 3;
+  LEASE_STATE_SUPERSEDED = 4;
+}
+message LeaseObservation {
+  LeaseState state = 1;
+  // Latest lease, including extensions, present only when active at observation.
+  GrantReceipt current = 2;
+}
+message RenewRequest {
+  ResourceId resource = 1;
+  string request_id = 2;
+  string lease_id = 3;
+  uint32 lease_ttl_ms = 4;
+  RequestAttempt attempt = 5;
+}
+message RenewResponse {
+  GrantReceipt lease = 1;
+  bool replayed = 2;
+  LeaseObservation observation = 3;
+}
+message ReleaseRequest {
+  ResourceId resource = 1;
+  string request_id = 2;
+  string lease_id = 3;
+  RequestAttempt attempt = 4;
+}
+message ReleaseResponse {
+  string revision = 1;
+  bool replayed = 2;
+}
+message GetRequestStatusRequest {
+  ResourceId resource = 1;
+  string request_id = 2;
+  RequestAttempt attempt = 3;
+}
+message GetRequestStatusResponse {
+  // NotFound is only a snapshot: an in-flight operation can still commit.
+  oneof outcome {
+    TryAcquireResponse acquired = 1;
+    RenewResponse renewed = 2;
+    ReleaseResponse released = 3;
+    WaitState waiting = 4;
+  }
+}
+
+// Resource-local request identity. Exact decimal u64 strings. ACK means the
+// application no longer needs the acknowledged results, not lock release.
+message RequestAttempt {
+  string session_id = 1;
+  string sequence = 2;
+  string acknowledged_through = 3;
+}
+message OpenSessionRequest {
+  ResourceId resource = 1;
+}
+message OpenSessionResponse {
+  RecoverySession session = 1;
+}
+message AcknowledgeSessionRequest {
+  ResourceId resource = 1;
+  string session_id = 2;
+  string acknowledged_through = 3;
+}
+message AcknowledgeSessionResponse {
+  RecoverySession session = 1;
+}
+message RecoverySession {
+  string session_id = 1;
+  string acknowledged_through = 2;
+  string expires_at_unix_ms = 3;
+  uint32 request_window = 4;
+}
+
+// Retry/resume/cancel with this SAME immutable envelope. The wait deadline starts
+// at first admission. HTTP disconnect/deadline does not cancel durable intent.
+message AcquireRequest {
+  TryAcquireRequest acquisition = 1;
+  uint32 wait_timeout_ms = 2;
+}
+enum WaitState {
+  WAIT_STATE_UNSPECIFIED = 0;
+  WAIT_STATE_PENDING = 1;
+  WAIT_STATE_CANCELLED = 2;
+  WAIT_STATE_EXPIRED = 3;
+}
+message AcquireResponse {
+  oneof outcome {
+    TryAcquireResponse acquired = 1;
+    WaitState waiting = 2;
+  }
+}
+
+message CancelPendingRequest {
+  AcquireRequest acquire = 1;
+}
+message CancelPendingResponse {
+  AcquireResponse result = 1;
+}

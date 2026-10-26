@@ -1,0 +1,33 @@
+# Pintle local test permissions. Loaded only for this trusted project.
+# Keep external downloads/audits separate; do not replace this with full access.
+default_permissions = "pintle-local"
+
+[features]
+# Domain rules are enforced only with the command network proxy active.
+network_proxy = true
+
+[permissions.pintle-local]
+description = "Pintle workspace, Hermit/worker-build caches, and loopback tests only."
+extends = ":workspace"
+
+[permissions.pintle-local.filesystem]
+"~/Library/Caches/hermit" = "write"
+"~/Library/Caches/worker-build" = "write"
+
+[permissions.pintle-local.filesystem.":workspace_roots"]
+# Preserve the existing developer profile's Git access and config protections.
+".git" = "write"
+".agents" = "read"
+".codex" = "read"
+
+[permissions.pintle-local.network]
+enabled = true
+# Allow POST for local Connect RPCs; destinations remain loopback-only.
+mode = "full"
+# Required by macOS for Wrangler and test-controller listening sockets.
+allow_local_binding = true
+
+[permissions.pintle-local.network.domains]
+"localhost" = "allow"
+"127.0.0.1" = "allow"
+"::1" = "allow"

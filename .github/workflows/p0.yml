@@ -1,0 +1,28 @@
+name: P0 through P3 local correctness
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: ./bin/just bootstrap-core
+      - run: ./bin/just check-core test-core
+  do-local:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - run: ./bin/just bootstrap
+      - run: ./bin/just test
+        env:
+          PINTLE_PROTO_BASE_REF: ${{ github.event.pull_request.base.sha }}

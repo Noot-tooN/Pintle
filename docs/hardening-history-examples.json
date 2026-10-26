@@ -1,0 +1,165 @@
+[
+  {
+    "history": [
+      {
+        "Call": 31,
+        "Return": 36,
+        "ID": "id-0",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 1,
+          "Revision": 1,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 32,
+        "Return": 35,
+        "ID": "id-1",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "contended",
+          "Fence": 0,
+          "Revision": 0,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 33,
+        "Return": 34,
+        "ID": "id-2",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "contended",
+          "Fence": 0,
+          "Revision": 0,
+          "Replayed": false
+        }
+      }
+    ],
+    "test": "TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply5"
+  },
+  {
+    "history": [
+      {
+        "Call": 665,
+        "Return": 666,
+        "ID": "id",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "unknown",
+          "Fence": 0,
+          "Revision": 0,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 667,
+        "Return": 668,
+        "ID": "id",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 1,
+          "Revision": 1,
+          "Replayed": false
+        }
+      }
+    ],
+    "test": "TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-11000"
+  },
+  {
+    "history": [
+      {
+        "Call": 791,
+        "Return": 792,
+        "ID": "old",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 1,
+          "Revision": 1,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 793,
+        "Return": 794,
+        "ID": "",
+        "Owner": "",
+        "Kind": "vacate",
+        "Result": {
+          "Kind": "vacated",
+          "Fence": 0,
+          "Revision": 0,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 795,
+        "Return": 796,
+        "ID": "new",
+        "Owner": "bob",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 2,
+          "Revision": 3,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 797,
+        "Return": 798,
+        "ID": "old",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 1,
+          "Revision": 1,
+          "Replayed": true
+        }
+      }
+    ],
+    "test": "TestDeterministicHardening/historical_replay_after_successor"
+  },
+  {
+    "history": [
+      {
+        "Call": 811,
+        "Return": 812,
+        "ID": "id",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "unknown",
+          "Fence": 0,
+          "Revision": 0,
+          "Replayed": false
+        }
+      },
+      {
+        "Call": 813,
+        "Return": 814,
+        "ID": "id",
+        "Owner": "alice",
+        "Kind": "grant",
+        "Result": {
+          "Kind": "granted",
+          "Fence": 1,
+          "Revision": 1,
+          "Replayed": true
+        }
+      }
+    ],
+    "test": "TestDeterministicHardening/cancel_and_restart_at_known_boundaries/after_sync-restart"
+  }
+]

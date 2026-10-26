@@ -1,0 +1,1327 @@
+    Checking pintle-core v0.0.0 (<checkout>/crates/core)
+    Checking pintle-auth v0.0.0 (<checkout>/crates/auth)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.76s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.03s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.13s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.03s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running unittests src/lib.rs (target/debug/deps/pintle_auth-231d1206ef747638)
+
+running 2 tests
+test tests::exact_time_boundaries_and_rotation ... ok
+test tests::malformed_configuration_always_fails_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/pintle_core-71da4df6a68efd52)
+
+running 4 tests
+test tests::malformed_counters_and_requests_are_rejected ... ok
+test tests::grant_contention_replay_and_payload_conflict ... ok
+test tests::historical_replay_never_grants_again ... ok
+test tests::exact_counters_and_overflow_fail_closed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/lease.rs (target/debug/deps/lease-af2605fb11cf8862)
+
+running 7 tests
+test clock_regression_cannot_resurrect_observed_expiry_even_after_restart ... ok
+test time_overflow_and_corrupt_persisted_leases_fail_closed ... ok
+test immutable_replay_observes_renewed_expired_and_released_leases ... ok
+test exact_expiry_renew_release_and_stale_owners ... ok
+test every_lifecycle_write_rolls_back_then_retries ... ok
+test limits_overflow_and_release_reservation ... ok
+P1 reference model: 271452 trace prefixes; 12 events; depth 5
+test exhaustive_lease_lifecycle_time_and_restart_traces ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.78s
+
+     Running tests/model.rs (target/debug/deps/model-3c87c1cd6b2aa80e)
+
+running 4 tests
+test malformed_dedupe_never_returns_a_successful_receipt ... ok
+test every_read_and_write_failure_aborts_and_same_id_can_retry ... ok
+test input_lengths_and_invalid_counters_leave_state_unchanged ... ok
+validated 187240 trace prefixes; depth=5 alphabet=8 initial_states=5
+test exhaustive_five_event_traces_against_independent_model ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+     Running tests/session.rs (target/debug/deps/session-1d2fe9c32d79df44)
+
+running 9 tests
+test session_counter_precision_and_corrupt_records_fail_closed ... ok
+test stalled_receipts_cannot_be_kept_forever_by_heartbeats ... ok
+test gaps_conflicts_limits_and_expiry_are_explicit ... ok
+test acknowledgement_is_not_release_and_late_duplicates_never_execute ... ok
+test every_write_failure_rolls_back_cleanup_ack_and_ownership ... ok
+test final_window_and_session_slots_are_reserved_for_owner_release ... ok
+test session_churn_is_bounded_and_ids_never_repeat ... ok
+test recycled_history_exceeds_lifetime_cap_and_preserves_fences ... ok
+verified 37448 bounded session trace prefixes
+test exhaustive_session_histories ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.94s
+
+     Running tests/waiting.rs (target/debug/deps/waiting-34ff21efeaeeac88)
+
+running 8 tests
+test precise_queue_tickets_and_overflow ... ok
+test regressed_queue_counter_aborts_without_partial_grant ... ok
+test renewal_reschedules_expiry_and_pending_cannot_be_acknowledged ... ok
+test fifo_release_cancel_and_no_barging ... ok
+test rollback_registration_cancellation_and_grant_every_write ... ok
+test exact_deadlines_sessions_conflicts_and_quota ... ok
+P2 independent model: 9330 trace prefixes; depth 5; six events
+test independent_wait_model ... ok
+P3 two-waiter model: 37448 trace prefixes; eight events; depth five
+test independent_two_waiter_model ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.79s
+
+?   	pintle.local/spike/gen/go/pintle/v1	[no test files]
+?   	pintle.local/spike/gen/go/pintle/v1/pintlev1connect	[no test files]
+=== RUN   TestTTLValidationAndStablePreparedRequests
+--- PASS: TestTTLValidationAndStablePreparedRequests (0.00s)
+=== RUN   TestLeaseStringRedactsCapability
+--- PASS: TestLeaseStringRedactsCapability (0.00s)
+=== RUN   TestMaintenanceRenewalAndUnknownRecovery
+--- PASS: TestMaintenanceRenewalAndUnknownRecovery (0.00s)
+=== RUN   TestMaintenanceBudgetBoundaries
+=== RUN   TestMaintenanceBudgetBoundaries/19.999999999s
+=== RUN   TestMaintenanceBudgetBoundaries/20s
+=== RUN   TestMaintenanceBudgetBoundaries/20.000000001s
+--- PASS: TestMaintenanceBudgetBoundaries (0.00s)
+    --- PASS: TestMaintenanceBudgetBoundaries/19.999999999s (0.00s)
+    --- PASS: TestMaintenanceBudgetBoundaries/20s (0.00s)
+    --- PASS: TestMaintenanceBudgetBoundaries/20.000000001s (0.00s)
+=== RUN   TestMaintenanceTerminalFailures
+=== RUN   TestMaintenanceTerminalFailures/expired
+=== RUN   TestMaintenanceTerminalFailures/wrong-owner
+=== RUN   TestMaintenanceTerminalFailures/ack-unknown
+=== RUN   TestMaintenanceTerminalFailures/parent-cancel
+--- PASS: TestMaintenanceTerminalFailures (0.00s)
+    --- PASS: TestMaintenanceTerminalFailures/expired (0.00s)
+    --- PASS: TestMaintenanceTerminalFailures/wrong-owner (0.00s)
+    --- PASS: TestMaintenanceTerminalFailures/ack-unknown (0.00s)
+    --- PASS: TestMaintenanceTerminalFailures/parent-cancel (0.00s)
+=== RUN   TestMaintenanceStopResponseOrders
+=== RUN   TestMaintenanceStopResponseOrders/false
+=== RUN   TestMaintenanceStopResponseOrders/true
+--- PASS: TestMaintenanceStopResponseOrders (0.00s)
+    --- PASS: TestMaintenanceStopResponseOrders/false (0.00s)
+    --- PASS: TestMaintenanceStopResponseOrders/true (0.00s)
+=== RUN   TestSessionConcurrentAllocationAndReleaseReservation
+--- PASS: TestSessionConcurrentAllocationAndReleaseReservation (0.00s)
+=== RUN   TestMalformedLeaseObservationsFailClosed
+=== RUN   TestMalformedLeaseObservationsFailClosed/fence
+=== RUN   TestMalformedLeaseObservationsFailClosed/revision
+=== RUN   TestMalformedLeaseObservationsFailClosed/expiry
+=== RUN   TestMalformedLeaseObservationsFailClosed/holder
+=== RUN   TestMalformedLeaseObservationsFailClosed/id
+=== RUN   TestMalformedLeaseObservationsFailClosed/resource
+=== RUN   TestMalformedLeaseObservationsFailClosed/capability
+=== RUN   TestMalformedLeaseObservationsFailClosed/time-bound
+--- PASS: TestMalformedLeaseObservationsFailClosed (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/fence (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/revision (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/expiry (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/holder (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/id (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/resource (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/capability (0.00s)
+    --- PASS: TestMalformedLeaseObservationsFailClosed/time-bound (0.00s)
+=== RUN   TestEndpointPolicyAndNoRedirect
+--- PASS: TestEndpointPolicyAndNoRedirect (0.00s)
+=== RUN   TestResponseSizeAndSessionValidation
+--- PASS: TestResponseSizeAndSessionValidation (0.00s)
+=== RUN   TestClientStringRedactsCredential
+--- PASS: TestClientStringRedactsCredential (0.00s)
+PASS
+ok  	pintle.local/spike/sdk/go/pintle	1.314s
+Hermit environment <checkout> activated
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+    Finished `release` profile [optimized] target(s) in 0.10s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: ✨  Done in 0.76s
+[INFO]: 📦   Your wasm pkg is ready to publish at <checkout>/crates/cloudflare/build/.tmp.
+
+  index.js  29.2kb
+
+⚡ Done in 9ms
+=== RUN   TestP0b
+    connect_test.go:136: runtime logs and SQLite state: <checkout>/test-results/p0b-136404912
+=== RUN   TestP0b/generated_protobuf_roundtrip_replay_and_contention
+=== RUN   TestP0b/auth_namespace_and_principal_isolation
+=== RUN   TestP0b/exact_tokens_over_protobuf
+=== RUN   TestP0b/generated_client_validation_and_codec_errors
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/missing-version
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/bad-version
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/bad-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/long-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/negative-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/expired
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/malformed-protobuf
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/unsupported-codec
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/streaming
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/grpc
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/get
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/unknown-method
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/oversized
+=== RUN   TestP0b/exact_public_field_and_body_boundaries
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-0
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-1
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-2
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-3
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-4
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/namespace-5
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/key-6
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/key-7
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/key-8
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/key-9
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/request_id-10
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/request_id-11
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/request_id-12
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/holder_ref-13
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/holder_ref-14
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/holder_ref-15
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/holder_ref-16
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8191-chunked-false
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8192-chunked-false
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8193-chunked-false
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8191-chunked-true
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8192-chunked-true
+=== RUN   TestP0b/exact_public_field_and_body_boundaries/bytes-8193-chunked-true
+=== RUN   TestP0b/generated_clients_concurrent_grants_and_retries
+=== RUN   TestP0b/generated_client_response_loss_and_restart
+=== RUN   TestP0b/already_cancelled_client
+=== RUN   TestP0b/real_timer_stalled_upload_smoke
+--- PASS: TestP0b (3.65s)
+    --- PASS: TestP0b/generated_protobuf_roundtrip_replay_and_contention (0.03s)
+    --- PASS: TestP0b/auth_namespace_and_principal_isolation (0.03s)
+    --- PASS: TestP0b/exact_tokens_over_protobuf (0.02s)
+    --- PASS: TestP0b/generated_client_validation_and_codec_errors (0.02s)
+    --- PASS: TestP0b/wire_status_error_envelopes_and_limits (0.03s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/missing-version (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/bad-version (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/bad-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/long-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/negative-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/expired (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/malformed-protobuf (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/unsupported-codec (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/streaming (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/grpc (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/get (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/unknown-method (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/oversized (0.00s)
+    --- PASS: TestP0b/exact_public_field_and_body_boundaries (0.11s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-0 (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-1 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-2 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-3 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-4 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/namespace-5 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/key-6 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/key-7 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/key-8 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/key-9 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/request_id-10 (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/request_id-11 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/request_id-12 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/holder_ref-13 (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/holder_ref-14 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/holder_ref-15 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/holder_ref-16 (0.00s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8191-chunked-false (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8192-chunked-false (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8193-chunked-false (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8191-chunked-true (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8192-chunked-true (0.01s)
+        --- PASS: TestP0b/exact_public_field_and_body_boundaries/bytes-8193-chunked-true (0.01s)
+    --- PASS: TestP0b/generated_clients_concurrent_grants_and_retries (0.05s)
+    --- PASS: TestP0b/generated_client_response_loss_and_restart (0.70s)
+    --- PASS: TestP0b/already_cancelled_client (0.00s)
+    --- PASS: TestP0b/real_timer_stalled_upload_smoke (0.04s)
+=== RUN   TestHistoryCheckerRejectsInvalidHistories
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/overlapping_return_order
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/two_fresh_grants
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/replay_without_original
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/invented_token
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/wrong_revision
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/real_time_order_matters
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/unknown_committed
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/unknown_aborted
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/conflicting_principal
+--- PASS: TestHistoryCheckerRejectsInvalidHistories (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/overlapping_return_order (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/two_fresh_grants (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/replay_without_original (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/invented_token (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/wrong_revision (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/real_time_order_matters (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/unknown_committed (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/unknown_aborted (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/conflicting_principal (0.00s)
+=== RUN   TestDefaultBuildIgnoresTestController
+--- PASS: TestDefaultBuildIgnoresTestController (0.66s)
+=== RUN   TestP11SDK
+    p11_test.go:36: P1 runtime state: <checkout>/test-results/p1-1504659002
+=== RUN   TestP11SDK/bounded_history_and_explicit_ack
+    p11_test.go:76: retained SQLite evidence at renewal 32: [map[allocated:20480 bytes:418 fence:1 pending:0 receipts:0 rows:6 sessions:1]]
+    p11_test.go:76: retained SQLite evidence at renewal 1100: [map[allocated:20480 bytes:424 fence:1 pending:0 receipts:0 rows:6 sessions:1]]
+=== RUN   TestP11SDK/concurrent_duplicate_and_conflict
+=== RUN   TestP11SDK/restart_preserves_unacknowledged_and_ack_boundary
+--- PASS: TestP11SDK (10.24s)
+    --- PASS: TestP11SDK/bounded_history_and_explicit_ack (8.17s)
+    --- PASS: TestP11SDK/concurrent_duplicate_and_conflict (0.07s)
+    --- PASS: TestP11SDK/restart_preserves_unacknowledged_and_ack_boundary (1.34s)
+=== RUN   TestP1SDK
+    p1_test.go:23: P1 runtime state: <checkout>/test-results/p1-2107855241
+=== RUN   TestP1SDK/lifecycle_and_immutable_recovery
+=== RUN   TestP1SDK/concurrent_sdk_requests
+=== RUN   TestP1SDK/distinct_request_contention
+=== RUN   TestP1SDK/lost_response_then_status_and_restart
+--- PASS: TestP1SDK (1.42s)
+    --- PASS: TestP1SDK/lifecycle_and_immutable_recovery (0.04s)
+    --- PASS: TestP1SDK/concurrent_sdk_requests (0.04s)
+    --- PASS: TestP1SDK/distinct_request_contention (0.03s)
+    --- PASS: TestP1SDK/lost_response_then_status_and_restart (0.66s)
+=== RUN   TestP2SDK
+    p2_test.go:13: P1 runtime state: <checkout>/test-results/p1-1502907788
+--- PASS: TestP2SDK (1.04s)
+=== RUN   TestP3StaticAuthAndTransport
+    p3_test.go:58: P3 local state: <checkout>/test-results/p3-4281844418
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/malformed
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/missing-version
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/unsupported-codec
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/unsupported-compression
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/bad-timeout
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/oversize
+=== RUN   TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/malformed
+=== NAME  TestP3StaticAuthAndTransport
+    p3_test.go:147: validated 54 sanitized RPC metric events
+--- PASS: TestP3StaticAuthAndTransport (1.46s)
+    --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections (0.10s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Acquire/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/CancelPending/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/TryAcquire/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Renew/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/Release/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/GetRequestStatus/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/OpenSession/malformed (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/missing-version (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/unsupported-codec (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/unsupported-compression (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/bad-timeout (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/oversize (0.00s)
+        --- PASS: TestP3StaticAuthAndTransport/all_rpc_transport_rejections/AcknowledgeSession/malformed (0.00s)
+=== RUN   TestP3StaticConfigurationFailsClosed
+=== RUN   TestP3StaticConfigurationFailsClosed/expired
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-791663976
+=== RUN   TestP3StaticConfigurationFailsClosed/not-yet-valid
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-3970362687
+=== RUN   TestP3StaticConfigurationFailsClosed/missing-expiry
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-1377165266
+=== RUN   TestP3StaticConfigurationFailsClosed/duplicate
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-890535120
+=== RUN   TestP3StaticConfigurationFailsClosed/missing-static-secret
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-1599402162
+=== RUN   TestP3StaticConfigurationFailsClosed/invalid-mode
+    p3_test.go:174: P3 local state: <checkout>/test-results/p3-3199197891
+--- PASS: TestP3StaticConfigurationFailsClosed (5.16s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/expired (0.65s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/not-yet-valid (0.66s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/missing-expiry (0.64s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/duplicate (0.64s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/missing-static-secret (1.28s)
+    --- PASS: TestP3StaticConfigurationFailsClosed/invalid-mode (1.29s)
+=== RUN   TestP3LocalLatency
+    p3_test.go:197: P3 local state: <checkout>/test-results/p3-1698499193
+    p3_test.go:316: local latency evidence: {
+          "1_clients": {
+            "max_ms": 6.888,
+            "p50_ms": 5.944,
+            "p95_ms": 6.888,
+            "p99_ms": 6.888,
+            "samples": 12
+          },
+          "1_independent_grant_clients": {
+            "max_ms": 10.325,
+            "p50_ms": 5.495,
+            "p95_ms": 10.325,
+            "p99_ms": 10.325,
+            "samples": 12
+          },
+          "8_clients": {
+            "max_ms": 42.574,
+            "p50_ms": 36.116,
+            "p95_ms": 42.444,
+            "p99_ms": 42.574,
+            "samples": 96
+          },
+          "8_independent_grant_clients": {
+            "max_ms": 45.596,
+            "p50_ms": 37.41,
+            "p95_ms": 45.471,
+            "p99_ms": 45.596,
+            "samples": 96
+          },
+          "scope": "local Wrangler; no WAN or production claim"
+        }
+--- PASS: TestP3LocalLatency (2.97s)
+=== RUN   TestP3MaintenanceRuntime
+    p3_test.go:343: P3 local state: <checkout>/test-results/p3-2776203383
+=== RUN   TestP3MaintenanceRuntime/false
+=== RUN   TestP3MaintenanceRuntime/true
+--- PASS: TestP3MaintenanceRuntime (0.77s)
+    --- PASS: TestP3MaintenanceRuntime/false (0.06s)
+    --- PASS: TestP3MaintenanceRuntime/true (0.05s)
+=== RUN   TestClientProcess
+    spike_test.go:206: used by concurrency test
+--- SKIP: TestClientProcess (0.00s)
+=== RUN   TestP0
+    spike_test.go:233: runtime logs and SQLite state: <checkout>/test-results/p0-3033282031
+=== RUN   TestP0/atomic_rollback_every_write
+=== RUN   TestP0/concurrent_client_processes
+=== RUN   TestP0/concurrent_same_id_and_payload_conflict
+=== RUN   TestP0/response_lost_after_commit
+=== RUN   TestP0/precision_boundaries_and_overflow
+=== RUN   TestP0/tenant_and_tuple_isolation
+=== RUN   TestP0/kill_restart_persistence_and_replay
+--- PASS: TestP0 (6.14s)
+    --- PASS: TestP0/atomic_rollback_every_write (0.14s)
+    --- PASS: TestP0/concurrent_client_processes (3.24s)
+    --- PASS: TestP0/concurrent_same_id_and_payload_conflict (0.05s)
+    --- PASS: TestP0/response_lost_after_commit (0.01s)
+    --- PASS: TestP0/precision_boundaries_and_overflow (0.05s)
+    --- PASS: TestP0/tenant_and_tuple_isolation (0.01s)
+    --- PASS: TestP0/kill_restart_persistence_and_replay (1.34s)
+PASS
+ok  	pintle.local/spike/tests/integration	34.821s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.26s
+Hermit environment <checkout> activated
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+   Compiling pintle-cloudflare v0.0.0 (<checkout>/crates/cloudflare)
+    Finished `release` profile [optimized] target(s) in 6.06s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: ✨  Done in 6.76s
+[INFO]: 📦   Your wasm pkg is ready to publish at <checkout>/crates/cloudflare/build/.tmp.
+
+  index.js  29.4kb
+
+⚡ Done in 8ms
+=== RUN   TestDeterministicHardening
+    hardening_test.go:207: checkpoint traces, histories and runtime logs: <checkout>/test-results/hardening-596657968
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply5
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply0
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply1
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply2
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply3
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply4
+=== RUN   TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply5
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-10999
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-11000
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-11001
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-10999
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-11000
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-11001
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-10999
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-11000
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-11001
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-10999
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-11000
+=== RUN   TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-11001
+=== RUN   TestDeterministicHardening/controlled_timer_races
+=== RUN   TestDeterministicHardening/controlled_timer_races/before_commit-timeout-false
+=== RUN   TestDeterministicHardening/controlled_timer_races/before_commit-timeout-true
+=== RUN   TestDeterministicHardening/controlled_timer_races/after_sync-timeout-false
+=== RUN   TestDeterministicHardening/controlled_timer_races/after_sync-timeout-true
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/before_dispatch
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/before_commit
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/after_commit
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/after_sync
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/before_response
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/gateway_response
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/read-request/id
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/read-owner
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/read-fence
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/read-revision
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/sql-write-1
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/sql-write-2
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/sql-write-3
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/sql-write-4
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/error-write-1
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/error-write-2
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/error-write-3
+=== RUN   TestDeterministicHardening/failure_and_rollback_matrix/error-write-4
+=== RUN   TestDeterministicHardening/aborted_id_is_not_reserved
+=== RUN   TestDeterministicHardening/historical_replay_after_successor
+=== RUN   TestDeterministicHardening/cancel_and_restart_at_known_boundaries
+=== RUN   TestDeterministicHardening/cancel_and_restart_at_known_boundaries/before_commit-cancel
+=== RUN   TestDeterministicHardening/cancel_and_restart_at_known_boundaries/before_commit-restart
+=== RUN   TestDeterministicHardening/cancel_and_restart_at_known_boundaries/after_sync-cancel
+=== RUN   TestDeterministicHardening/cancel_and_restart_at_known_boundaries/after_sync-restart
+--- PASS: TestDeterministicHardening (3.95s)
+    --- PASS: TestDeterministicHardening/all_three_request_admission_orders (1.45s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply0 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply1 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply2 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply3 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit0-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit1-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit2-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit3-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply0 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit4-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/distinct-admit5-reply5 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply0 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit0-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit1-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply4 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit2-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit3-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit4-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/duplicate-admit5-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit0-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply2 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit1-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit2-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit3-reply5 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit4-reply5 (0.02s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply0 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply1 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply2 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply3 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply4 (0.01s)
+        --- PASS: TestDeterministicHardening/all_three_request_admission_orders/conflicting-admit5-reply5 (0.01s)
+    --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep (0.13s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-10999 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-11000 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_dispatch-11001 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-10999 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-11000 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_commit-11001 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-10999 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-11000 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/before_response-11001 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-10999 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-11000 (0.01s)
+        --- PASS: TestDeterministicHardening/deadline_boundaries_without_sleep/gateway_response-11001 (0.01s)
+    --- PASS: TestDeterministicHardening/controlled_timer_races (0.04s)
+        --- PASS: TestDeterministicHardening/controlled_timer_races/before_commit-timeout-false (0.01s)
+        --- PASS: TestDeterministicHardening/controlled_timer_races/before_commit-timeout-true (0.01s)
+        --- PASS: TestDeterministicHardening/controlled_timer_races/after_sync-timeout-false (0.01s)
+        --- PASS: TestDeterministicHardening/controlled_timer_races/after_sync-timeout-true (0.01s)
+    --- PASS: TestDeterministicHardening/failure_and_rollback_matrix (0.23s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/before_dispatch (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/before_commit (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/after_commit (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/after_sync (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/before_response (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/gateway_response (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/read-request/id (0.02s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/read-owner (0.02s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/read-fence (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/read-revision (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/sql-write-1 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/sql-write-2 (0.02s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/sql-write-3 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/sql-write-4 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/error-write-1 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/error-write-2 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/error-write-3 (0.01s)
+        --- PASS: TestDeterministicHardening/failure_and_rollback_matrix/error-write-4 (0.01s)
+    --- PASS: TestDeterministicHardening/aborted_id_is_not_reserved (0.02s)
+    --- PASS: TestDeterministicHardening/historical_replay_after_successor (0.02s)
+    --- PASS: TestDeterministicHardening/cancel_and_restart_at_known_boundaries (1.37s)
+        --- PASS: TestDeterministicHardening/cancel_and_restart_at_known_boundaries/before_commit-cancel (0.01s)
+        --- PASS: TestDeterministicHardening/cancel_and_restart_at_known_boundaries/before_commit-restart (0.67s)
+        --- PASS: TestDeterministicHardening/cancel_and_restart_at_known_boundaries/after_sync-cancel (0.01s)
+        --- PASS: TestDeterministicHardening/cancel_and_restart_at_known_boundaries/after_sync-restart (0.67s)
+=== RUN   TestHistoryCheckerRejectsInvalidHistories
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/overlapping_return_order
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/two_fresh_grants
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/replay_without_original
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/invented_token
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/wrong_revision
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/real_time_order_matters
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/unknown_committed
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/unknown_aborted
+=== RUN   TestHistoryCheckerRejectsInvalidHistories/conflicting_principal
+--- PASS: TestHistoryCheckerRejectsInvalidHistories (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/overlapping_return_order (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/two_fresh_grants (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/replay_without_original (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/invented_token (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/wrong_revision (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/real_time_order_matters (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/unknown_committed (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/unknown_aborted (0.00s)
+    --- PASS: TestHistoryCheckerRejectsInvalidHistories/conflicting_principal (0.00s)
+=== RUN   TestP11Deterministic
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-335951664
+=== RUN   TestP11Deterministic/session_expiry_boundaries
+=== RUN   TestP11Deterministic/session_expiry_boundaries/300999
+=== RUN   TestP11Deterministic/session_expiry_boundaries/301000
+=== RUN   TestP11Deterministic/session_expiry_boundaries/301001
+=== RUN   TestP11Deterministic/acknowledgement_versus_retry_orders
+=== RUN   TestP11Deterministic/acknowledgement_versus_retry_orders/ackfalse-responsefalse
+=== RUN   TestP11Deterministic/acknowledgement_versus_retry_orders/ackfalse-responsetrue
+=== RUN   TestP11Deterministic/acknowledgement_versus_retry_orders/acktrue-responsefalse
+=== RUN   TestP11Deterministic/acknowledgement_versus_retry_orders/acktrue-responsetrue
+=== RUN   TestP11Deterministic/every_write_rollback
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-1
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-2
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-3
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-4
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-5
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-sql-6
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-1
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-2
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-3
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-4
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-5
+=== RUN   TestP11Deterministic/every_write_rollback/acquire-error-6
+=== RUN   TestP11Deterministic/every_write_rollback/renew-sql-1
+=== RUN   TestP11Deterministic/every_write_rollback/renew-sql-2
+=== RUN   TestP11Deterministic/every_write_rollback/renew-sql-3
+=== RUN   TestP11Deterministic/every_write_rollback/renew-sql-4
+=== RUN   TestP11Deterministic/every_write_rollback/renew-sql-5
+=== RUN   TestP11Deterministic/every_write_rollback/renew-error-1
+=== RUN   TestP11Deterministic/every_write_rollback/renew-error-2
+=== RUN   TestP11Deterministic/every_write_rollback/renew-error-3
+=== RUN   TestP11Deterministic/every_write_rollback/renew-error-4
+=== RUN   TestP11Deterministic/every_write_rollback/renew-error-5
+=== RUN   TestP11Deterministic/every_write_rollback/release-sql-1
+=== RUN   TestP11Deterministic/every_write_rollback/release-sql-2
+=== RUN   TestP11Deterministic/every_write_rollback/release-sql-3
+=== RUN   TestP11Deterministic/every_write_rollback/release-sql-4
+=== RUN   TestP11Deterministic/every_write_rollback/release-sql-5
+=== RUN   TestP11Deterministic/every_write_rollback/release-error-1
+=== RUN   TestP11Deterministic/every_write_rollback/release-error-2
+=== RUN   TestP11Deterministic/every_write_rollback/release-error-3
+=== RUN   TestP11Deterministic/every_write_rollback/release-error-4
+=== RUN   TestP11Deterministic/every_write_rollback/release-error-5
+=== RUN   TestP11Deterministic/unknown_commit_restart
+=== RUN   TestP11Deterministic/unknown_commit_restart/false
+=== RUN   TestP11Deterministic/unknown_commit_restart/true
+--- PASS: TestP11Deterministic (3.07s)
+    --- PASS: TestP11Deterministic/session_expiry_boundaries (0.06s)
+        --- PASS: TestP11Deterministic/session_expiry_boundaries/300999 (0.03s)
+        --- PASS: TestP11Deterministic/session_expiry_boundaries/301000 (0.02s)
+        --- PASS: TestP11Deterministic/session_expiry_boundaries/301001 (0.02s)
+    --- PASS: TestP11Deterministic/acknowledgement_versus_retry_orders (0.12s)
+        --- PASS: TestP11Deterministic/acknowledgement_versus_retry_orders/ackfalse-responsefalse (0.03s)
+        --- PASS: TestP11Deterministic/acknowledgement_versus_retry_orders/ackfalse-responsetrue (0.03s)
+        --- PASS: TestP11Deterministic/acknowledgement_versus_retry_orders/acktrue-responsefalse (0.03s)
+        --- PASS: TestP11Deterministic/acknowledgement_versus_retry_orders/acktrue-responsetrue (0.03s)
+    --- PASS: TestP11Deterministic/every_write_rollback (0.78s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-1 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-2 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-3 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-4 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-5 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-sql-6 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-1 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-2 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-3 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-4 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-5 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/acquire-error-6 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-sql-1 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-sql-2 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-sql-3 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-sql-4 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-sql-5 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-error-1 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-error-2 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-error-3 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-error-4 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/renew-error-5 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-sql-1 (0.02s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-sql-2 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-sql-3 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-sql-4 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-sql-5 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-error-1 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-error-2 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-error-3 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-error-4 (0.03s)
+        --- PASS: TestP11Deterministic/every_write_rollback/release-error-5 (0.03s)
+    --- PASS: TestP11Deterministic/unknown_commit_restart (1.44s)
+        --- PASS: TestP11Deterministic/unknown_commit_restart/false (0.74s)
+        --- PASS: TestP11Deterministic/unknown_commit_restart/true (0.71s)
+=== RUN   TestP11DeterministicAlarm
+=== RUN   TestP11DeterministicAlarm/normal
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-3151909274
+=== RUN   TestP11DeterministicAlarm/rollback
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-3951592291
+=== RUN   TestP11DeterministicAlarm/restart
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-2019932609
+--- PASS: TestP11DeterministicAlarm (3.88s)
+    --- PASS: TestP11DeterministicAlarm/normal (0.97s)
+    --- PASS: TestP11DeterministicAlarm/rollback (1.00s)
+    --- PASS: TestP11DeterministicAlarm/restart (1.91s)
+=== RUN   TestP1Deterministic
+    p1_test.go:23: P1 runtime state: <checkout>/test-results/p1-3552419929
+=== RUN   TestP1Deterministic/expiry_edges
+=== RUN   TestP1Deterministic/expiry_edges/acquire-1099
+=== RUN   TestP1Deterministic/expiry_edges/acquire-1100
+=== RUN   TestP1Deterministic/expiry_edges/acquire-1101
+=== RUN   TestP1Deterministic/expiry_edges/renew-1099
+=== RUN   TestP1Deterministic/expiry_edges/renew-1100
+=== RUN   TestP1Deterministic/expiry_edges/renew-1101
+=== RUN   TestP1Deterministic/expiry_edges/release-1099
+=== RUN   TestP1Deterministic/expiry_edges/release-1100
+=== RUN   TestP1Deterministic/expiry_edges/release-1101
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply5
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply0
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply1
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply2
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply3
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply4
+=== RUN   TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply5
+=== RUN   TestP1Deterministic/renew_and_release_duplicate_ids
+=== RUN   TestP1Deterministic/renew_and_release_duplicate_ids/renew
+=== RUN   TestP1Deterministic/renew_and_release_duplicate_ids/release
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-5
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-6
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-5
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-6
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-5
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-error-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-error-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-error-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-error-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/renew-error-5
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-sql-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-sql-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-sql-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-sql-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-sql-5
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-error-1
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-error-2
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-error-3
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-error-4
+=== RUN   TestP1Deterministic/rollback_every_lifecycle_write/release-error-5
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/acquire-before_commit
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/acquire-after_sync
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/renew-before_commit
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/renew-after_sync
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/release-before_commit
+=== RUN   TestP1Deterministic/unknown_acknowledgement_and_restart/release-after_sync
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-deadline-before
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-deadline-after
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-ack-after
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-deadline-before
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-deadline-after
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-ack-after
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/release-deadline-before
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/release-deadline-after
+=== RUN   TestP1Deterministic/deadline_and_acknowledgement_recovery/release-ack-after
+=== RUN   TestP1Deterministic/clock_regression_and_status_after_restart
+--- PASS: TestP1Deterministic (8.26s)
+    --- PASS: TestP1Deterministic/expiry_edges (0.15s)
+        --- PASS: TestP1Deterministic/expiry_edges/acquire-1099 (0.03s)
+        --- PASS: TestP1Deterministic/expiry_edges/acquire-1100 (0.02s)
+        --- PASS: TestP1Deterministic/expiry_edges/acquire-1101 (0.01s)
+        --- PASS: TestP1Deterministic/expiry_edges/renew-1099 (0.02s)
+        --- PASS: TestP1Deterministic/expiry_edges/renew-1100 (0.01s)
+        --- PASS: TestP1Deterministic/expiry_edges/renew-1101 (0.02s)
+        --- PASS: TestP1Deterministic/expiry_edges/release-1099 (0.01s)
+        --- PASS: TestP1Deterministic/expiry_edges/release-1100 (0.01s)
+        --- PASS: TestP1Deterministic/expiry_edges/release-1101 (0.01s)
+    --- PASS: TestP1Deterministic/renew_release_acquire_all_orders (1.78s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply0 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit0-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit1-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply3 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply4 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit2-reply5 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply0 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply3 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply4 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit3-reply5 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply0 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply4 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit4-reply5 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply3 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1099-commit5-reply5 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit0-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply3 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit1-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit2-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply1 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit3-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply2 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit4-reply5 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply0 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply1 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply2 (0.03s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply3 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply4 (0.02s)
+        --- PASS: TestP1Deterministic/renew_release_acquire_all_orders/at1100-commit5-reply5 (0.02s)
+    --- PASS: TestP1Deterministic/renew_and_release_duplicate_ids (0.04s)
+        --- PASS: TestP1Deterministic/renew_and_release_duplicate_ids/renew (0.02s)
+        --- PASS: TestP1Deterministic/renew_and_release_duplicate_ids/release (0.02s)
+    --- PASS: TestP1Deterministic/rollback_every_lifecycle_write (0.53s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-1 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-2 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-3 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-4 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-5 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-sql-6 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-1 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-2 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-3 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-4 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-5 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/acquire-error-6 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-1 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-2 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-3 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-4 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-sql-5 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-error-1 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-error-2 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-error-3 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-error-4 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/renew-error-5 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-sql-1 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-sql-2 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-sql-3 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-sql-4 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-sql-5 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-error-1 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-error-2 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-error-3 (0.01s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-error-4 (0.02s)
+        --- PASS: TestP1Deterministic/rollback_every_lifecycle_write/release-error-5 (0.02s)
+    --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart (4.23s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/acquire-before_commit (0.71s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/acquire-after_sync (0.70s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/renew-before_commit (0.71s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/renew-after_sync (0.75s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/release-before_commit (0.68s)
+        --- PASS: TestP1Deterministic/unknown_acknowledgement_and_restart/release-after_sync (0.67s)
+    --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery (0.15s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-deadline-before (0.01s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-deadline-after (0.01s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/acquire-ack-after (0.01s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-deadline-before (0.02s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-deadline-after (0.02s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/renew-ack-after (0.02s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/release-deadline-before (0.02s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/release-deadline-after (0.02s)
+        --- PASS: TestP1Deterministic/deadline_and_acknowledgement_recovery/release-ack-after (0.02s)
+    --- PASS: TestP1Deterministic/clock_regression_and_status_after_restart (0.68s)
+=== RUN   TestP2Deterministic
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1001236704
+=== RUN   TestP2Deterministic/registration_release_gap
+=== RUN   TestP2Deterministic/registration_release_gap/false
+=== RUN   TestP2Deterministic/registration_release_gap/true
+=== RUN   TestP2Deterministic/cancel_release_commit_and_reply_orders
+=== RUN   TestP2Deterministic/cancel_release_commit_and_reply_orders/false-false
+=== RUN   TestP2Deterministic/cancel_release_commit_and_reply_orders/false-true
+=== RUN   TestP2Deterministic/cancel_release_commit_and_reply_orders/true-false
+=== RUN   TestP2Deterministic/cancel_release_commit_and_reply_orders/true-true
+=== RUN   TestP2Deterministic/deadline_edges_and_fifo
+=== RUN   TestP2Deterministic/deadline_edges_and_fifo/1999
+=== RUN   TestP2Deterministic/deadline_edges_and_fifo/2000
+=== RUN   TestP2Deterministic/deadline_edges_and_fifo/2001
+=== RUN   TestP2Deterministic/pending_restart_and_cancel_before_registration
+--- PASS: TestP2Deterministic (2.12s)
+    --- PASS: TestP2Deterministic/registration_release_gap (0.11s)
+        --- PASS: TestP2Deterministic/registration_release_gap/false (0.06s)
+        --- PASS: TestP2Deterministic/registration_release_gap/true (0.05s)
+    --- PASS: TestP2Deterministic/cancel_release_commit_and_reply_orders (0.27s)
+        --- PASS: TestP2Deterministic/cancel_release_commit_and_reply_orders/false-false (0.06s)
+        --- PASS: TestP2Deterministic/cancel_release_commit_and_reply_orders/false-true (0.06s)
+        --- PASS: TestP2Deterministic/cancel_release_commit_and_reply_orders/true-false (0.07s)
+        --- PASS: TestP2Deterministic/cancel_release_commit_and_reply_orders/true-true (0.07s)
+    --- PASS: TestP2Deterministic/deadline_edges_and_fifo (0.26s)
+        --- PASS: TestP2Deterministic/deadline_edges_and_fifo/1999 (0.06s)
+        --- PASS: TestP2Deterministic/deadline_edges_and_fifo/2000 (0.05s)
+        --- PASS: TestP2Deterministic/deadline_edges_and_fifo/2001 (0.05s)
+    --- PASS: TestP2Deterministic/pending_restart_and_cancel_before_registration (0.81s)
+=== RUN   TestP2Rollback
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1889908145
+=== RUN   TestP2Rollback/register-sql
+    p2_deterministic_test.go:209: verified rollback after each of 7 writes
+=== RUN   TestP2Rollback/register-error
+    p2_deterministic_test.go:209: verified rollback after each of 7 writes
+=== RUN   TestP2Rollback/cancel-sql
+    p2_deterministic_test.go:209: verified rollback after each of 4 writes
+=== RUN   TestP2Rollback/cancel-error
+    p2_deterministic_test.go:209: verified rollback after each of 4 writes
+=== RUN   TestP2Rollback/release-grant-sql
+    p2_deterministic_test.go:209: verified rollback after each of 13 writes
+=== RUN   TestP2Rollback/release-grant-error
+    p2_deterministic_test.go:209: verified rollback after each of 13 writes
+--- PASS: TestP2Rollback (3.55s)
+    --- PASS: TestP2Rollback/register-sql (0.37s)
+    --- PASS: TestP2Rollback/register-error (0.33s)
+    --- PASS: TestP2Rollback/cancel-sql (0.25s)
+    --- PASS: TestP2Rollback/cancel-error (0.26s)
+    --- PASS: TestP2Rollback/release-grant-sql (0.84s)
+    --- PASS: TestP2Rollback/release-grant-error (0.83s)
+=== RUN   TestP2Alarm
+=== RUN   TestP2Alarm/normal
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-3895394191
+=== RUN   TestP2Alarm/restart
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-2473148185
+=== RUN   TestP2Alarm/rollback
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-3141674826
+--- PASS: TestP2Alarm (2.94s)
+    --- PASS: TestP2Alarm/normal (0.73s)
+    --- PASS: TestP2Alarm/restart (1.38s)
+    --- PASS: TestP2Alarm/rollback (0.83s)
+=== RUN   TestP2CapacityAndIdle
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-240290723
+    p2_deterministic_test.go:313: 16 waiter registration wall time (includes test checkpoints): 207.306ms
+    p2_deterministic_test.go:315: 16 durable pending + 16 bounded HTTP subscriptions: [map[allocated:36864 bytes:5350 fence:1 pending:16 receipts:17 rows:7 sessions:1]]
+--- PASS: TestP2CapacityAndIdle (1.31s)
+=== RUN   TestP2UnknownCommit
+=== RUN   TestP2UnknownCommit/before_commit
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-3668844242
+=== RUN   TestP2UnknownCommit/after_sync
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1528230770
+=== RUN   TestP2UnknownCommit/grant_after_sync
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1494019743
+--- PASS: TestP2UnknownCommit (4.19s)
+    --- PASS: TestP2UnknownCommit/before_commit (1.39s)
+    --- PASS: TestP2UnknownCommit/after_sync (1.40s)
+    --- PASS: TestP2UnknownCommit/grant_after_sync (1.40s)
+=== RUN   TestP2DuplicateAndDisconnect
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-2326245804
+=== RUN   TestP2DuplicateAndDisconnect/false
+=== RUN   TestP2DuplicateAndDisconnect/true
+--- PASS: TestP2DuplicateAndDisconnect (0.86s)
+    --- PASS: TestP2DuplicateAndDisconnect/false (0.13s)
+    --- PASS: TestP2DuplicateAndDisconnect/true (0.07s)
+=== RUN   TestP2SDKResumesSameIntent
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1206418415
+--- PASS: TestP2SDKResumesSameIntent (0.78s)
+=== RUN   TestP2ProcessHelper
+    p2_process_test.go:29: child process helper
+--- SKIP: TestP2ProcessHelper (0.00s)
+=== RUN   TestP2TwoProcesses
+    p11_deterministic_test.go:39: P1 runtime state: <checkout>/test-results/p1-1704177404
+--- PASS: TestP2TwoProcesses (1.78s)
+=== RUN   TestP2SDK
+    p2_test.go:13: P1 runtime state: <checkout>/test-results/p1-3795303229
+--- PASS: TestP2SDK (1.10s)
+=== RUN   TestP3CredentialTimeBoundaries
+    p3_deterministic_test.go:21: P3 local state: <checkout>/test-results/p3-3186306807
+=== RUN   TestP3CredentialTimeBoundaries/999
+=== RUN   TestP3CredentialTimeBoundaries/1000
+=== RUN   TestP3CredentialTimeBoundaries/1999
+=== RUN   TestP3CredentialTimeBoundaries/2000
+=== RUN   TestP3CredentialTimeBoundaries/2001
+--- PASS: TestP3CredentialTimeBoundaries (0.70s)
+    --- PASS: TestP3CredentialTimeBoundaries/999 (0.01s)
+    --- PASS: TestP3CredentialTimeBoundaries/1000 (0.02s)
+    --- PASS: TestP3CredentialTimeBoundaries/1999 (0.01s)
+    --- PASS: TestP3CredentialTimeBoundaries/2000 (0.00s)
+    --- PASS: TestP3CredentialTimeBoundaries/2001 (0.00s)
+PASS
+ok  	pintle.local/spike/tests/integration	39.829s
+Hermit environment <checkout> activated
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+   Compiling pintle-cloudflare v0.0.0 (<checkout>/crates/cloudflare)
+    Finished `release` profile [optimized] target(s) in 5.66s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: ✨  Done in 6.31s
+[INFO]: 📦   Your wasm pkg is ready to publish at <checkout>/crates/cloudflare/build/.tmp.
+
+  index.js  29.2kb
+
+⚡ Done in 8ms

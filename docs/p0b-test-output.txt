@@ -1,0 +1,164 @@
+BOOTSTRAP (exit 0)
+Hermit environment <checkout> activated
+info: syncing channel updates for 1.99.1-aarch64-apple-darwin
+info: latest update on 2026-10-15 for version 1.99.1 (58cf8f9c3 2026-10-13)
+info: component clippy is up to date
+info: component rust-std for target wasm32-unknown-unknown is up to date
+info: component rustfmt is up to date
+
+  1.99.1-aarch64-apple-darwin unchanged - rustc 1.99.1 (58cf8f9c3 2026-10-13)
+
+
+added 36 packages, and audited 37 packages in 1s
+
+7 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+     Ignored package `worker-build v0.8.7` is already installed, use --force to override
+
+FULL P0 + P0b TESTS (exit 0)
+Hermit environment <checkout> activated
+This Hermit environment has already been activated. Skipping
+This Hermit environment has already been activated. Skipping
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src/lib.rs (target/debug/deps/pintle_core-0e32f1e5ca76ef82)
+
+running 4 tests
+test tests::malformed_counters_and_requests_are_rejected ... ok
+test tests::grant_contention_replay_and_payload_conflict ... ok
+test tests::historical_replay_never_grants_again ... ok
+test tests::exact_counters_and_overflow_fail_closed ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests pintle_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Checking unicode-ident v1.0.27
+    Checking bytes v1.12.1
+   Compiling proc-macro2 v1.0.107
+    Checking regex-syntax v0.8.11
+    Checking libc v0.2.191
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.3
+    Checking foldhash v0.1.5
+    Checking bitflags v2.13.2
+    Checking fixedbitset v0.5.7
+    Checking either v1.19.0
+    Checking once_cell v1.21.4
+    Checking fastrand v2.5.0
+    Checking hashbrown v0.15.5
+    Checking itertools v0.14.0
+    Checking multimap v0.10.1
+    Checking log v0.4.34
+    Checking heck v0.5.0
+    Checking quote v1.0.47
+    Checking indexmap v2.14.2
+    Checking syn v2.0.119
+    Checking errno v0.3.14
+    Checking rustix v1.1.5
+    Checking regex-automata v0.4.18
+    Checking petgraph v0.8.3
+    Checking tempfile v3.27.0
+    Checking regex v1.13.1
+    Checking prettyplease v0.2.37
+   Compiling prost-derive v0.14.4
+   Compiling serde_derive v1.0.228
+    Checking prost v0.14.4
+    Checking prost-types v0.14.4
+    Checking pintle-protocol v0.0.0 (<checkout>/crates/protocol)
+    Checking serde v1.0.228
+    Checking prost-build v0.14.4
+    Checking pintle-core v0.0.0 (<checkout>/crates/core)
+    Checking pintle-proto-gen v0.0.0 (<checkout>/tools/proto-gen)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.03s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+This Hermit environment has already been activated. Skipping
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+    Finished `release` profile [optimized] target(s) in 0.10s
+[INFO]: Optimizing wasm binaries with `wasm-opt`...
+[INFO]: ✨  Done in 0.63s
+[INFO]: 📦   Your wasm pkg is ready to publish at <checkout>/crates/cloudflare/build/.tmp.
+
+  index.js  28.9kb
+
+⚡ Done in 9ms
+?   	pintle.local/spike/gen/go/pintle/v1	[no test files]
+?   	pintle.local/spike/gen/go/pintle/v1/pintlev1connect	[no test files]
+=== RUN   TestP0b
+    connect_test.go:136: runtime logs and SQLite state: <checkout>/test-results/p0b-2069054754
+=== RUN   TestP0b/generated_protobuf_roundtrip_replay_and_contention
+=== RUN   TestP0b/auth_namespace_and_principal_isolation
+=== RUN   TestP0b/exact_tokens_over_protobuf
+=== RUN   TestP0b/generated_client_validation_and_codec_errors
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/missing-version
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/bad-version
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/bad-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/long-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/negative-timeout
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/expired
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/malformed-protobuf
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/unsupported-codec
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/streaming
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/grpc
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/get
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/unknown-method
+=== RUN   TestP0b/wire_status_error_envelopes_and_limits/oversized
+=== RUN   TestP0b/generated_clients_concurrent_grants_and_retries
+=== RUN   TestP0b/generated_client_response_loss_and_restart
+=== RUN   TestP0b/deadlines_before_and_after_commit
+=== RUN   TestP0b/body_read_deadline
+--- PASS: TestP0b (6.19s)
+    --- PASS: TestP0b/generated_protobuf_roundtrip_replay_and_contention (0.02s)
+    --- PASS: TestP0b/auth_namespace_and_principal_isolation (0.02s)
+    --- PASS: TestP0b/exact_tokens_over_protobuf (0.01s)
+    --- PASS: TestP0b/generated_client_validation_and_codec_errors (0.01s)
+    --- PASS: TestP0b/wire_status_error_envelopes_and_limits (0.02s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/missing-version (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/bad-version (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/bad-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/long-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/negative-timeout (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/expired (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/malformed-protobuf (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/unsupported-codec (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/streaming (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/grpc (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/get (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/unknown-method (0.00s)
+        --- PASS: TestP0b/wire_status_error_envelopes_and_limits/oversized (0.00s)
+    --- PASS: TestP0b/generated_clients_concurrent_grants_and_retries (0.04s)
+    --- PASS: TestP0b/generated_client_response_loss_and_restart (0.64s)
+    --- PASS: TestP0b/deadlines_before_and_after_commit (2.18s)
+    --- PASS: TestP0b/body_read_deadline (0.05s)
+=== RUN   TestClientProcess
+    spike_test.go:206: used by concurrency test
+--- SKIP: TestClientProcess (0.00s)
+=== RUN   TestP0
+    spike_test.go:233: runtime logs and SQLite state: <checkout>/test-results/p0-4083452990
+=== RUN   TestP0/atomic_rollback_every_write
+=== RUN   TestP0/concurrent_client_processes
+=== RUN   TestP0/concurrent_same_id_and_payload_conflict
+=== RUN   TestP0/response_lost_after_commit
+=== RUN   TestP0/precision_boundaries_and_overflow
+=== RUN   TestP0/tenant_and_tuple_isolation
+=== RUN   TestP0/kill_restart_persistence_and_replay
+--- PASS: TestP0 (3.09s)
+    --- PASS: TestP0/atomic_rollback_every_write (0.17s)
+    --- PASS: TestP0/concurrent_client_processes (0.11s)
+    --- PASS: TestP0/concurrent_same_id_and_payload_conflict (0.03s)
+    --- PASS: TestP0/response_lost_after_commit (0.01s)
+    --- PASS: TestP0/precision_boundaries_and_overflow (0.06s)
+    --- PASS: TestP0/tenant_and_tuple_isolation (0.02s)
+    --- PASS: TestP0/kill_restart_persistence_and_replay (1.31s)
+PASS
+ok  	pintle.local/spike/tests/integration	9.530s
+
+EXPECTED BREAKING CHANGE REJECTION (exit 100)
+/tmp/pintle-p0b-breaking-check/proto/pintle/v1/lock.proto:37:1:Previously present field "4" with name "fencing_token" on message "GrantReceipt" was deleted.

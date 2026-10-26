@@ -1,0 +1,10 @@
+{
+  "name": "pintle-p0",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  },
+  "overrides": {
+    "undici": "7.30.1"
+  }
+}
