@@ -36,6 +36,13 @@ remain separate approval events. Do not add a wildcard domain, turn off the prox
 disable approvals globally or approve unrestricted shell/Just runners to make
 those commands work. No deployment or push is authorized by this configuration.
 
+The integration launcher sets `WRANGLER_HIDE_BANNER=true` as well as disabling
+metrics. In the pinned Wrangler version, the startup banner otherwise checks npm
+when its temporary update cache expires. This caused a later local run to be
+interrupted by the network policy despite earlier cached runs passing. Hiding the
+banner avoids that routine external request; it does not relax the sandbox or
+suppress test failures. Dependency updates remain explicit maintenance work.
+
 ## Activation
 
 A running chat can retain its previously selected permission profile. The current

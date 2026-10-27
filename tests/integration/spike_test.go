@@ -149,7 +149,8 @@ func start(t *testing.T, root, state, config string, activation int, enabled boo
 	}
 	cmd := exec.Command(filepath.Join(root, "bin/node"), args...)
 	cmd.Dir = root
-	cmd.Env = append(os.Environ(), "WRANGLER_SEND_METRICS=false", "CI=true", "WRANGLER_LOG_PATH="+filepath.Join(filepath.Dir(state), fmt.Sprintf("wrangler-debug-%d.log", activation)))
+	// The startup banner otherwise checks npm when Wrangler's update cache expires.
+	cmd.Env = append(os.Environ(), "WRANGLER_SEND_METRICS=false", "WRANGLER_HIDE_BANNER=true", "CI=true", "WRANGLER_LOG_PATH="+filepath.Join(filepath.Dir(state), fmt.Sprintf("wrangler-debug-%d.log", activation)))
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	log, err := os.Create(filepath.Join(filepath.Dir(state), fmt.Sprintf("wrangler-%d.log", activation)))
 	if err != nil {

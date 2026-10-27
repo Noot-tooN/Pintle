@@ -198,6 +198,29 @@ func verifyLifecycle(t *testing.T, p *leaseJob, e lifecycleExpected) {
 }
 func TestP1Deterministic(t *testing.T) {
 	h := newLeaseHarness(t)
+	t.Run("status_response_variants", func(t *testing.T) {
+		const key = "status-variants"
+		owner := h.fresh(t, key, time.Second)
+		renew := h.do(t, "renew", key, "renew", *owner, 2*time.Second, 1001)
+		updated := requireLease(t, renew.grant, renew.err)
+		status := h.do(t, "status", key, "renew", pintle.Lease{}, 0, 1002)
+		if status.err != nil || status.status == nil || status.status.Renewed == nil {
+			t.Fatalf("missing renewed status: %+v, %v", status.status, status.err)
+		}
+		assertSame(t, *status.status.Renewed.Receipt, *updated)
+		assertSame(t, *status.status.Renewed.Current, *updated)
+		assertSame(t, status.status.Renewed.Replayed, true)
+		release := h.do(t, "release", key, "release", *updated, 0, 1003)
+		if release.err != nil {
+			t.Fatal(release.err)
+		}
+		status = h.do(t, "status", key, "release", pintle.Lease{}, 0, 1004)
+		if status.err != nil || status.status == nil || status.status.Released == nil {
+			t.Fatalf("missing released status: %+v, %v", status.status, status.err)
+		}
+		assertSame(t, status.status.Released.Revision, release.released.Revision)
+		assertSame(t, status.status.Released.Replayed, true)
+	})
 	t.Run("expiry_edges", func(t *testing.T) {
 		for _, method := range []string{"acquire", "renew", "release"} {
 			for _, now := range []uint64{1099, 1100, 1101} {

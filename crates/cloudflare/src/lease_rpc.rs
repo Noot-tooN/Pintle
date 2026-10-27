@@ -33,114 +33,145 @@ pub fn sessions_enabled(env: &Env) -> bool {
             .var("P11_ENABLED")
             .is_ok_and(|v| v.to_string() == "true")
 }
-#[derive(Clone)]
-enum Management {
-    Open,
-    Ack { id: String, through: u64 },
-}
 pub fn is_internal(req: &Request) -> bool {
     req.path().starts_with(INTERNAL)
 }
+#[derive(Clone, Copy)]
+enum WaitKind {
+    Acquire,
+    CancelPending,
+}
 #[derive(Clone)]
+enum Operation {
+    Execute {
+        command: Command,
+        // Optional only for the legacy P1 fixture; authority validates the mode.
+        attempt: Option<session::Frame>,
+    },
+    Wait {
+        command: Command,
+        attempt: Option<session::Frame>,
+        duration: u64,
+        kind: WaitKind,
+    },
+    OpenSession,
+    AcknowledgeSession {
+        id: String,
+        through: u64,
+    },
+}
+impl Operation {
+    fn accepts_session_mode(&self, use_sessions: bool) -> bool {
+        match self {
+            Self::Execute { attempt, .. } | Self::Wait { attempt, .. } => {
+                attempt.is_some() == use_sessions
+            }
+            Self::OpenSession | Self::AcknowledgeSession { .. } => use_sessions,
+        }
+    }
+}
 struct Input {
     resource: ResourceId,
-    command: Command,
-    attempt: Option<session::Frame>,
-    management: Option<Management>,
-    waiting: Option<(u64, bool)>,
+    operation: Operation,
 }
 fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
-    let mut attempt = None;
-    let mut management = None;
-    let mut waiting = None;
-    let (resource, command) = match method {
+    let (resource, operation) = match method {
         "Acquire" | "CancelPending" => {
-            let r = if method == "CancelPending" {
-                CancelPendingRequest::decode(bytes)
-                    .map_err(|_| invalid("malformed protobuf"))?
-                    .acquire
-                    .ok_or_else(|| invalid("acquire required"))?
+            let (r, kind) = if method == "CancelPending" {
+                (
+                    CancelPendingRequest::decode(bytes)
+                        .map_err(|_| invalid("malformed protobuf"))?
+                        .acquire
+                        .ok_or_else(|| invalid("acquire required"))?,
+                    WaitKind::CancelPending,
+                )
             } else {
-                AcquireRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?
+                (
+                    AcquireRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?,
+                    WaitKind::Acquire,
+                )
             };
             let a = r
                 .acquisition
                 .ok_or_else(|| invalid("acquisition required"))?;
-            attempt = frame(a.attempt)?;
-            waiting = Some((u64::from(r.wait_timeout_ms), method == "CancelPending"));
             (
                 a.resource,
-                Command::Acquire {
-                    id: a.request_id,
-                    holder: a.holder_ref,
-                    ttl_ms: a.lease_ttl_ms.into(),
+                Operation::Wait {
+                    command: Command::Acquire {
+                        id: a.request_id,
+                        holder: a.holder_ref,
+                        ttl_ms: a.lease_ttl_ms.into(),
+                    },
+                    attempt: frame(a.attempt)?,
+                    duration: u64::from(r.wait_timeout_ms),
+                    kind,
                 },
             )
         }
         "TryAcquire" => {
             let r = TryAcquireRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?;
-            attempt = frame(r.attempt)?;
             (
                 r.resource,
-                Command::Acquire {
-                    id: r.request_id,
-                    holder: r.holder_ref,
-                    ttl_ms: r.lease_ttl_ms.into(),
+                Operation::Execute {
+                    command: Command::Acquire {
+                        id: r.request_id,
+                        holder: r.holder_ref,
+                        ttl_ms: r.lease_ttl_ms.into(),
+                    },
+                    attempt: frame(r.attempt)?,
                 },
             )
         }
         "Renew" => {
             let r = RenewRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?;
-            attempt = frame(r.attempt)?;
             (
                 r.resource,
-                Command::Renew {
-                    id: r.request_id,
-                    token: r.lease_id,
-                    ttl_ms: r.lease_ttl_ms.into(),
+                Operation::Execute {
+                    command: Command::Renew {
+                        id: r.request_id,
+                        token: r.lease_id,
+                        ttl_ms: r.lease_ttl_ms.into(),
+                    },
+                    attempt: frame(r.attempt)?,
                 },
             )
         }
         "Release" => {
             let r = ReleaseRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?;
-            attempt = frame(r.attempt)?;
             (
                 r.resource,
-                Command::Release {
-                    id: r.request_id,
-                    token: r.lease_id,
+                Operation::Execute {
+                    command: Command::Release {
+                        id: r.request_id,
+                        token: r.lease_id,
+                    },
+                    attempt: frame(r.attempt)?,
                 },
             )
         }
         "GetRequestStatus" => {
             let r = GetRequestStatusRequest::decode(bytes)
                 .map_err(|_| invalid("malformed protobuf"))?;
-            {
-                attempt = frame(r.attempt)?;
-                (r.resource, Command::Status { id: r.request_id })
-            }
+            (
+                r.resource,
+                Operation::Execute {
+                    command: Command::Status { id: r.request_id },
+                    attempt: frame(r.attempt)?,
+                },
+            )
         }
         "OpenSession" => {
             let r = OpenSessionRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?;
-            management = Some(Management::Open);
-            (
-                r.resource,
-                Command::Status {
-                    id: "management".into(),
-                },
-            )
+            (r.resource, Operation::OpenSession)
         }
         "AcknowledgeSession" => {
             let r = AcknowledgeSessionRequest::decode(bytes)
                 .map_err(|_| invalid("malformed protobuf"))?;
-            management = Some(Management::Ack {
-                id: r.session_id,
-                through: decimal(&r.acknowledged_through)?,
-            });
             (
                 r.resource,
-                Command::Status {
-                    id: "management".into(),
+                Operation::AcknowledgeSession {
+                    id: r.session_id,
+                    through: decimal(&r.acknowledged_through)?,
                 },
             )
         }
@@ -156,10 +187,7 @@ fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
     }
     Ok(Input {
         resource,
-        command,
-        attempt,
-        management,
-        waiting,
+        operation,
     })
 }
 fn decimal(s: &str) -> RpcResult<u64> {
@@ -371,23 +399,19 @@ fn observation(o: Option<lease::Observation>, resource: &ResourceId) -> Option<L
         current: o.current.map(|l| wire_lease(l, resource)),
     })
 }
-fn encode(reply: Reply, resource: &ResourceId, status: bool) -> RpcResult<Vec<u8>> {
+fn operation_outcome(
+    reply: Reply,
+    resource: &ResourceId,
+) -> RpcResult<get_request_status_response::Outcome> {
+    use get_request_status_response::Outcome;
     let (receipt, replayed, obs) = match reply {
         Reply::Rejected(r) => return Err(rejection(r)),
         Reply::Contended => {
-            let r = TryAcquireResponse {
+            return Ok(Outcome::Acquired(TryAcquireResponse {
                 outcome: Some(try_acquire_response::Outcome::Contended(Contended {})),
                 replayed: false,
                 observation: None,
-            };
-            return Ok(if status {
-                GetRequestStatusResponse {
-                    outcome: Some(get_request_status_response::Outcome::Acquired(r)),
-                }
-                .encode_to_vec()
-            } else {
-                r.encode_to_vec()
-            });
+            }));
         }
         Reply::Applied {
             receipt,
@@ -395,46 +419,83 @@ fn encode(reply: Reply, resource: &ResourceId, status: bool) -> RpcResult<Vec<u8
             observation: obs,
         } => (receipt, replayed, observation(obs, resource)),
     };
-    let (bytes, outcome) = match receipt.mutation {
-        Mutation::Acquired(l) => {
-            let r = TryAcquireResponse {
-                outcome: Some(try_acquire_response::Outcome::Acquired(wire_lease(
-                    l, resource,
-                ))),
-                replayed,
-                observation: obs,
-            };
-            (
-                r.encode_to_vec(),
-                get_request_status_response::Outcome::Acquired(r),
-            )
-        }
-        Mutation::Renewed(l) => {
-            let r = RenewResponse {
-                lease: Some(wire_lease(l, resource)),
-                replayed,
-                observation: obs,
-            };
-            (
-                r.encode_to_vec(),
-                get_request_status_response::Outcome::Renewed(r),
-            )
-        }
+    Ok(match receipt.mutation {
+        Mutation::Acquired(l) => Outcome::Acquired(TryAcquireResponse {
+            outcome: Some(try_acquire_response::Outcome::Acquired(wire_lease(
+                l, resource,
+            ))),
+            replayed,
+            observation: obs,
+        }),
+        Mutation::Renewed(l) => Outcome::Renewed(RenewResponse {
+            lease: Some(wire_lease(l, resource)),
+            replayed,
+            observation: obs,
+        }),
         Mutation::Released { revision, .. } => {
-            let r = ReleaseResponse { revision, replayed };
-            (
-                r.encode_to_vec(),
-                get_request_status_response::Outcome::Released(r),
-            )
+            Outcome::Released(ReleaseResponse { revision, replayed })
+        }
+    })
+}
+fn encode(reply: session::Output, input: &Input) -> RpcResult<Vec<u8>> {
+    use get_request_status_response::Outcome;
+    let outcome = match reply {
+        session::Output::Rejected(r) => return Err(rejection(r)),
+        session::Output::Operation(r) => operation_outcome(r, &input.resource)?,
+        session::Output::Waiting(s) => Outcome::Waiting(match s {
+            waiting::State::Pending => WaitState::Pending,
+            waiting::State::Cancelled => WaitState::Cancelled,
+            waiting::State::Expired => WaitState::Expired,
+            waiting::State::Complete => return Err(unavailable()),
+        } as i32),
+        session::Output::Session(s) => {
+            let session = Some(RecoverySession {
+                session_id: s.id,
+                acknowledged_through: s.acknowledged.to_string(),
+                expires_at_unix_ms: s.expires_at_ms.to_string(),
+                request_window: session::WINDOW as u32,
+            });
+            return match &input.operation {
+                Operation::OpenSession => Ok(OpenSessionResponse { session }.encode_to_vec()),
+                Operation::AcknowledgeSession { .. } => {
+                    Ok(AcknowledgeSessionResponse { session }.encode_to_vec())
+                }
+                _ => Err(unavailable()),
+            };
         }
     };
-    Ok(if status {
-        GetRequestStatusResponse {
+    Ok(match &input.operation {
+        Operation::Execute {
+            command: Command::Status { .. },
+            ..
+        } => GetRequestStatusResponse {
             outcome: Some(outcome),
         }
-        .encode_to_vec()
-    } else {
-        bytes
+        .encode_to_vec(),
+        Operation::Execute { .. } => match outcome {
+            Outcome::Acquired(r) => r.encode_to_vec(),
+            Outcome::Renewed(r) => r.encode_to_vec(),
+            Outcome::Released(r) => r.encode_to_vec(),
+            Outcome::Waiting(_) => return Err(unavailable()),
+        },
+        Operation::Wait { kind, .. } => {
+            let outcome = match outcome {
+                Outcome::Acquired(r) => acquire_response::Outcome::Acquired(Box::new(r)),
+                Outcome::Waiting(s) => acquire_response::Outcome::Waiting(s),
+                _ => return Err(unavailable()),
+            };
+            let response = AcquireResponse {
+                outcome: Some(outcome),
+            };
+            match kind {
+                WaitKind::Acquire => response.encode_to_vec(),
+                WaitKind::CancelPending => CancelPendingResponse {
+                    result: Some(response),
+                }
+                .encode_to_vec(),
+            }
+        }
+        Operation::OpenSession | Operation::AcknowledgeSession { .. } => return Err(unavailable()),
     })
 }
 pub async fn authority(
@@ -463,14 +524,18 @@ pub async fn authority(
         let method = path.strip_prefix(INTERNAL).ok_or_else(unavailable)?;
         let input = decode(method, &body(&mut req).await?)?;
         let use_sessions = sessions_enabled(env);
-        if (use_sessions && input.management.is_none() && input.attempt.is_none())
-            || (!use_sessions && (input.management.is_some() || input.attempt.is_some()))
-        {
+        if !input.operation.accepts_session_mode(use_sessions) {
             return Err(invalid(
                 "P1.1 requires a session attempt; legacy P1 is a separate fixture",
             ));
         }
-        let subscription = if method == "Acquire" {
+        let subscription = if matches!(
+            input.operation,
+            Operation::Wait {
+                kind: WaitKind::Acquire,
+                ..
+            }
+        ) {
             Some(
                 notifications
                     .subscribe()
@@ -503,14 +568,8 @@ pub async fn authority(
         // before admitting the synchronous transaction.
         check_deadline(schedule.now(), deadline)?;
         let use_waiting = waiting_enabled(env);
-        let wait_command = input.waiting;
-        let request_id = input.command.id().to_owned();
         let query_subject = subject.clone();
-        let query_attempt = input.attempt.clone();
-        let command = input.command;
-        let management = input.management.clone();
-        let attempt = input.attempt;
-        let status = matches!(command, Command::Status { .. });
+        let operation = input.operation.clone();
         // Sample time at entry to the synchronous transaction. No awaits inside.
         let clock = schedule.clone();
         let json = atomic(&storage, move || {
@@ -520,47 +579,56 @@ pub async fn authority(
                 writes: 0,
             };
             let result = if use_waiting {
-                let action = if let Some((duration, cancel)) = wait_command {
-                    waiting::Action::Acquire {
-                        frame: attempt.as_ref().ok_or("missing attempt")?,
-                        command: &command,
+                let action = match &operation {
+                    Operation::Wait {
+                        command,
+                        attempt,
                         duration,
-                        cancel,
-                    }
-                } else {
-                    match &management {
-                        Some(Management::Open) => waiting::Action::Open,
-                        Some(Management::Ack { id, through }) => waiting::Action::Acknowledge {
-                            id,
-                            through: *through,
-                        },
-                        None => waiting::Action::Execute {
-                            frame: attempt.as_ref().ok_or("missing attempt")?,
-                            command: &command,
-                        },
-                    }
+                        kind,
+                    } => waiting::Action::Acquire {
+                        frame: attempt.as_ref().ok_or("missing attempt")?,
+                        command,
+                        duration: *duration,
+                        cancel: matches!(kind, WaitKind::CancelPending),
+                    },
+                    Operation::OpenSession => waiting::Action::Open,
+                    Operation::AcknowledgeSession { id, through } => waiting::Action::Acknowledge {
+                        id,
+                        through: *through,
+                    },
+                    Operation::Execute { command, attempt } => waiting::Action::Execute {
+                        frame: attempt.as_ref().ok_or("missing attempt")?,
+                        command,
+                    },
                 };
                 waiting::apply(&mut tx, &subject, action, clock.now(), &nonce)?
             } else if use_sessions {
-                match management {
-                    Some(Management::Open) => session::open(&mut tx, &subject, clock.now())?,
-                    Some(Management::Ack { id, through }) => {
-                        session::ack(&mut tx, &subject, &id, through, clock.now())?
+                match &operation {
+                    Operation::OpenSession => session::open(&mut tx, &subject, clock.now())?,
+                    Operation::AcknowledgeSession { id, through } => {
+                        session::ack(&mut tx, &subject, id, *through, clock.now())?
                     }
-                    None => session::execute(
+                    Operation::Execute { command, attempt }
+                    | Operation::Wait {
+                        command, attempt, ..
+                    } => session::execute(
                         &mut tx,
                         &subject,
-                        &attempt.ok_or("missing attempt")?,
-                        &command,
+                        attempt.as_ref().ok_or("missing attempt")?,
+                        command,
                         clock.now(),
                         &nonce,
                     )?,
                 }
             } else {
+                let command = match &operation {
+                    Operation::Execute { command, .. } | Operation::Wait { command, .. } => command,
+                    _ => return Err("session management requires sessions".into()),
+                };
                 session::Output::Operation(lease::execute(
                     &mut tx,
                     &subject,
-                    &command,
+                    command,
                     clock.now(),
                     &nonce,
                 )?)
@@ -583,6 +651,12 @@ pub async fn authority(
         }
         let mut reply: session::Output = serde_json::from_str(&json).map_err(|_| unavailable())?;
         if let Some(subscription) = subscription {
+            let Operation::Wait {
+                command, attempt, ..
+            } = &input.operation
+            else {
+                return Err(unavailable());
+            };
             schedule
                 .at("wait_registered")
                 .await
@@ -607,8 +681,8 @@ pub async fn authority(
                 check_deadline(schedule.now(), deadline)?;
                 let sql = storage.sql();
                 let subject = query_subject.clone();
-                let frame = query_attempt.clone().ok_or_else(unavailable)?;
-                let id = request_id.clone();
+                let frame = attempt.clone().ok_or_else(unavailable)?;
+                let id = command.id().to_owned();
                 let clock = schedule.clone();
                 let json = atomic(&storage, move || {
                     let mut tx = SqlTransaction {
@@ -631,63 +705,7 @@ pub async fn authority(
                 reply = serde_json::from_str(&json).map_err(|_| unavailable())?;
             }
         }
-        let bytes = match reply {
-            session::Output::Rejected(r) => return Err(rejection(r)),
-            session::Output::Operation(r) => {
-                let bytes = encode(r, &input.resource, status)?;
-                if wait_command.is_some() {
-                    AcquireResponse {
-                        outcome: Some(acquire_response::Outcome::Acquired(Box::new(
-                            TryAcquireResponse::decode(bytes.as_slice())
-                                .map_err(|_| unavailable())?,
-                        ))),
-                    }
-                    .encode_to_vec()
-                } else {
-                    bytes
-                }
-            }
-            session::Output::Waiting(s) => {
-                let state = match s {
-                    waiting::State::Pending => WaitState::Pending,
-                    waiting::State::Cancelled => WaitState::Cancelled,
-                    waiting::State::Expired => WaitState::Expired,
-                    waiting::State::Complete => return Err(unavailable()),
-                } as i32;
-                if status {
-                    GetRequestStatusResponse {
-                        outcome: Some(get_request_status_response::Outcome::Waiting(state)),
-                    }
-                    .encode_to_vec()
-                } else {
-                    AcquireResponse {
-                        outcome: Some(acquire_response::Outcome::Waiting(state)),
-                    }
-                    .encode_to_vec()
-                }
-            }
-            session::Output::Session(s) => {
-                let session = Some(RecoverySession {
-                    session_id: s.id,
-                    acknowledged_through: s.acknowledged.to_string(),
-                    expires_at_unix_ms: s.expires_at_ms.to_string(),
-                    request_window: session::WINDOW as u32,
-                });
-                if method == "OpenSession" {
-                    OpenSessionResponse { session }.encode_to_vec()
-                } else {
-                    AcknowledgeSessionResponse { session }.encode_to_vec()
-                }
-            }
-        };
-        let bytes = if method == "CancelPending" {
-            CancelPendingResponse {
-                result: Some(AcquireResponse::decode(bytes.as_slice()).map_err(|_| unavailable())?),
-            }
-            .encode_to_vec()
-        } else {
-            bytes
-        };
+        let bytes = encode(reply, &input)?;
         schedule
             .at("before_response")
             .await
