@@ -217,10 +217,6 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
                 .var("P11_ENABLED")
                 .is_ok_and(|v| v.to_string() == "true"))
             || !enabled(env)
-            || env
-                .var("P0B_ENABLED")
-                .is_ok_and(|v| v.to_string() == "true")
-            || crate::enabled(env)
             || (sessions_enabled(env)
                 && env.var("P1_ENABLED").is_ok_and(|v| v.to_string() == "true"))
         {

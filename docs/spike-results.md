@@ -1,5 +1,11 @@
 # P0 — Rust / Durable Objects / SQLite feasibility results
 
+> Historical milestone evidence: the P0/P0b runtime fixture and its commands
+> have since been retired. Useful coverage now runs against the current mutex;
+> see [test consolidation](test-consolidation-results.md). Captured results below
+> describe the implementation at that milestone, not current runtime controls.
+
+
 > Tooling update: command names below now use the root `justfile`. The milestone
 > runs originally used equivalent shell scripts; their captured transcripts are
 > unchanged. See [Just migration results](just-migration-results.md) for a full

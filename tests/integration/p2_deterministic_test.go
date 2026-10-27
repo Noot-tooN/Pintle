@@ -163,7 +163,7 @@ func TestP2Deterministic(t *testing.T) {
 		resumePending(h, t, req, 1000)
 		h.r.stop()
 		h.activation++
-		h.r = start(t, h.root, h.state, h.config, h.activation, false, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
+		h.r = start(t, h.root, h.state, h.config, h.activation, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
 		assertSame(t, waitStatus(h, t, req, 1001).Waiting, pintle.Pending)
 		rel, _ := s.NewRelease(*l)
 		h.do(t, 1001, releaseCall(rel))
@@ -200,6 +200,7 @@ func TestP2Rollback(t *testing.T) {
 						rel, _ := s.NewRelease(*l)
 						f = releaseCall(rel)
 					}
+					before := localRecords(t, h.root, h.state)
 					p := h.queue(t, 1000, f)
 					release(p.after, directive{Now: 1000})
 					release(p.before, directive{Now: 1000, Fault: object{"kind": kind, "after_write": position}})
@@ -213,6 +214,7 @@ func TestP2Rollback(t *testing.T) {
 						break
 					}
 					expectCode(t, p.err, connect.CodeUnavailable)
+					assertSame(t, localRecords(t, h.root, h.state), before)
 					q := h.do(t, 1000, func(ctx context.Context, c *pintle.Client) (any, error) {
 						return c.GetAttemptStatus(ctx, req.Acquisition.Resource, req.Acquisition.RequestID, req.Acquisition.Attempt)
 					})
@@ -253,7 +255,7 @@ func TestP2Alarm(t *testing.T) {
 				h.r.stop()
 				h.activation++
 				alarm = h.c.hold("alarm", "alarm_start")
-				h.r = start(t, h.root, h.state, h.config, h.activation, false, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL, "PINTLE_TEST_REAL_ALARM:true")
+				h.r = start(t, h.root, h.state, h.config, h.activation, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL, "PINTLE_TEST_REAL_ALARM:true")
 				arrived(t, alarm)
 			}
 			if mode == "rollback" {
@@ -383,7 +385,7 @@ func TestP2UnknownCommit(t *testing.T) {
 			h.r.stop()
 			h.wait(t, p)
 			h.activation++
-			h.r = start(t, h.root, h.state, h.config, h.activation, false, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
+			h.r = start(t, h.root, h.state, h.config, h.activation, "P2_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
 			q := h.do(t, 1001, func(ctx context.Context, c *pintle.Client) (any, error) {
 				return c.GetAttemptStatus(ctx, req.Acquisition.Resource, req.Acquisition.RequestID, req.Acquisition.Attempt)
 			})

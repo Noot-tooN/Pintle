@@ -181,10 +181,12 @@ func TestP11Deterministic(t *testing.T) {
 								operation = func(ctx context.Context, c *pintle.Client) (any, error) { return c.Release(ctx, r) }
 							}
 						}
+						before := localRecords(t, h.root, h.state)
 						p := h.queue(t, 1001, operation)
 						release(p.before, directive{Now: 1001, Fault: object{"kind": kind, "after_write": n}})
 						h.wait(t, p)
 						expectCode(t, p.err, connect.CodeUnavailable)
+						assertSame(t, localRecords(t, h.root, h.state), before)
 						p = h.do(t, 1002, operation)
 						if p.err != nil {
 							t.Fatal(p.err)
@@ -218,7 +220,7 @@ func TestP11Deterministic(t *testing.T) {
 				release(p.before, directive{Now: 1001})
 				release(p.after, directive{Now: 1001})
 				h.activation++
-				h.r = start(h.t, h.root, h.state, h.config, h.activation, false, "P11_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
+				h.r = start(h.t, h.root, h.state, h.config, h.activation, "P11_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
 				g := grantSession(t, h.do(t, 1002, acquireSession(req)))
 				assertSame(t, g.Replayed, committed)
 			})
@@ -250,7 +252,7 @@ func TestP11DeterministicAlarm(t *testing.T) {
 					h.r.stop()
 					release(startGate, directive{Now: 301000})
 					h.activation++
-					h.r = start(h.t, h.root, h.state, h.config, h.activation, false, "P11_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL, "PINTLE_TEST_REAL_ALARM:true")
+					h.r = start(h.t, h.root, h.state, h.config, h.activation, "P11_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL, "PINTLE_TEST_REAL_ALARM:true")
 				}
 				arrived(t, again)
 				intact := sessionStats(t, h.root, h.state)

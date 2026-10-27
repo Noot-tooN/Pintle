@@ -62,7 +62,7 @@ External downloads/audits remain separately authorized.
 native core tests, formatting, Clippy, a real release Wasm build, and Go HTTP and
 generated Connect client and SDK tests against local Wrangler/Miniflare/workerd. It starts and kills
 its own runtime processes; logs and persistent SQLite state are retained under
-ignored `test-results/p0-*`, `test-results/p0b-*`, `test-results/p1-*`, and
+ignored `test-results/protocol-*`, `test-results/p1-*`, and
 `test-results/p3-*` directories. No Cloudflare
 account is needed. Protocol tests create random local credentials and delete their
 temporary `.dev.vars` file during cleanup.
@@ -70,33 +70,22 @@ temporary `.dev.vars` file during cleanup.
 The full suite also runs `just test-hardening`, which compiles an explicit
 `test-hooks` Wasm feature and uses a local controller to choose execution order
 and logical time. Go tests run with `-race`. The recipe restores normal Wasm on
-exit. Hardening traces are retained under ignored `test-results/hardening-*` and
-`test-results/p1-*` directories.
+exit. Hardening traces are retained under ignored `test-results/p1-*` directories.
 
 Regenerate the checked-in Rust types, Go messages, and Go client with
 `./bin/just generate`; validate them with `./bin/just check-proto`.
 The schema is in [`proto/pintle/v1/lock.proto`](proto/pintle/v1/lock.proto), and the
 generated Go client is under [`gen/go/pintle/v1`](gen/go/pintle/v1).
 
-For manual inspection of the **legacy P0 JSON fixture** (not the P1 lease API):
-
-```sh
-./bin/just dev-spike
-curl http://127.0.0.1:8787/spike \
-  -H 'Authorization: Bearer local-a' -H 'Content-Type: application/json' \
-  -d '{"namespace":"demo","key":"invoice:1","operation":{"op":"grant","request":{"request_id":"request-1","owner":"alice"}}}'
-```
-
-`local-a` and `local-b` are public **test identity labels**, not credentials. The
-fixture is disabled unless `LOCAL_SPIKE=true` is explicitly supplied; the local
-dev/test commands enable it. `seed`, `vacate`, `snapshot`, and failure injection
-are test controls. Do not deploy this fixture or use it to guard external work.
-Historical replay returns the original grant record, not a claim of current
-ownership. The local JSON envelope is disposable test plumbing, not the public
-Pintle protocol.
+The obsolete P0 JSON fixture and P0b grant implementation have been removed.
+Their useful checks now exercise the lease/session implementation. There are no
+HTTP seed, vacate or snapshot controls. Private tests inspect SQLite at controlled
+boundaries and seed counters only while the local runtime is stopped. See the
+[coverage map and results](docs/test-consolidation-results.md).
 
 The P2 integration suite uses `P2_ENABLED=true` and ephemeral authenticated
-test identities. Modes cannot be mixed; earlier modes remain regression fixtures.
+test identities and explicit `PINTLE_AUTH_MODE=test`. Omitted auth mode defaults to
+static credentials. P1/P1.1/P2 modes cannot be mixed; P1/P1.1 remain focused lease/session regression modes.
 See [P2 SDK usage](docs/p2-results.md#sdk-usage-and-recovery). Acquire keeps durable
 server intent across bounded HTTP responses and disconnects; CancelPending must
 reconcile a grant that may have won the race. Open a session, prepare each request
@@ -107,6 +96,7 @@ historical Receipt from Current/State; an old grant is not current ownership.
 Run `./bin/just audit` separately for online npm/OSV advisory checks.
 See [deployment preparation](docs/deployment.md), [security review](docs/security-review.md),
 and the [SDK maintenance contract](docs/p3-results.md#sdk-maintenance-contract).
+For incident handling, see the [recovery policy and runbooks](docs/recovery-policy.md).
 
 ## Architecture and evidence
 

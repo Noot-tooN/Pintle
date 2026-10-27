@@ -151,7 +151,7 @@ func TestP11SDK(t *testing.T) {
 		g, err := c.TryAcquire(ctx, req)
 		before := requireLease(t, g, err)
 		r.stop()
-		r = start(t, root, state, config, 1, false, "P11_ENABLED:true")
+		r = start(t, root, state, config, 1, "P11_ENABLED:true")
 		c = sdk(t, r.base, a, client)
 		g, err = c.TryAcquire(ctx, req)
 		after := requireLease(t, g, err)
@@ -167,7 +167,7 @@ func TestP11SDK(t *testing.T) {
 		}
 		assertSame(t, g.Contended, true)
 		r.stop()
-		r = start(t, root, state, config, 2, false, "P11_ENABLED:true")
+		r = start(t, root, state, config, 2, "P11_ENABLED:true")
 		c = sdk(t, r.base, a, client)
 		_, err = c.TryAcquire(ctx, req)
 		expectCode(t, err, connect.CodeFailedPrecondition)

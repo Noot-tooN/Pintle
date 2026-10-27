@@ -9,8 +9,8 @@
     "bindings": [{ "name": "AUTHORITIES", "class_name": "PintleAuthority" }]
   },
   "migrations": [{ "tag": "p0-sqlite-v1", "new_sqlite_classes": ["PintleAuthority"] }]
-  // LOCAL_SPIKE, P0B_ENABLED, P1_ENABLED, P11_ENABLED, and P2_ENABLED are absent.
-  // Tests select one mode. P2 rejects mixing with legacy modes.
+  // P1_ENABLED, P11_ENABLED, and P2_ENABLED are absent.
+  // Tests select one mode. P2 rejects mixing with P1/P1.1 regression modes.
   // Protocol tests require ephemeral PINTLE_TEST_CREDENTIALS; no defaults.
   // Future staging: explicit PINTLE_AUTH_MODE=static + PINTLE_CREDENTIALS secret.
   // Optional PINTLE_METRICS=true emits sanitized events. See docs/deployment.md.

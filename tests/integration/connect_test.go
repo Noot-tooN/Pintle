@@ -29,7 +29,7 @@ import (
 )
 
 func rpcRequest(key, id, holder string) *v1.TryAcquireRequest {
-	return &v1.TryAcquireRequest{Resource: &v1.ResourceId{Namespace: "test", Key: key}, RequestId: id, HolderRef: holder}
+	return &v1.TryAcquireRequest{Resource: &v1.ResourceId{Namespace: "test", Key: key}, RequestId: id, HolderRef: holder, LeaseTtlMs: 60000}
 }
 func rpc(t *testing.T, c pintlev1connect.LockServiceClient, token string, msg *v1.TryAcquireRequest) (*connect.Response[v1.TryAcquireResponse], error) {
 	t.Helper()
@@ -80,6 +80,8 @@ func protocolConfig(t *testing.T, root, run string) string {
 		t.Fatal(err)
 	}
 	delete(config, "build")
+	// Test authentication is explicit; the service defaults to static credentials.
+	config["vars"] = object{"PINTLE_AUTH_MODE": "test"}
 	config["main"] = filepath.Join(root, "crates/cloudflare/build/worker/shim.mjs")
 	data, err := json.Marshal(config)
 	if err != nil {
@@ -118,7 +120,7 @@ func rawRPC(t *testing.T, base, token, method, path string, body io.Reader, head
 	}
 	return res.StatusCode, res.Header, data
 }
-func TestP0b(t *testing.T) {
+func TestProtocol(t *testing.T) {
 	// All restarts belong to the suite, including those initiated by subtests.
 	runtimeOwner := t
 	root, err := filepath.Abs("../..")
@@ -129,30 +131,24 @@ func TestP0b(t *testing.T) {
 	if err = os.MkdirAll(results, 0755); err != nil {
 		t.Fatal(err)
 	}
-	run, err := os.MkdirTemp(results, "p0b-")
+	run, err := os.MkdirTemp(results, "protocol-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("runtime logs and SQLite state: %s", run)
 	config := protocolConfig(t, root, run)
 	state := filepath.Join(run, "state")
-	// Fixture setup only. The tested public RPC runs with /spike disabled.
-	r := start(runtimeOwner, root, state, config, 0, true)
-	for key, fence := range map[string]string{"rpc-precision": "9007199254740992", "rpc-max": "18446744073709551614", "rpc-exhausted": "18446744073709551615"} {
-		mustCall(t, r.base, "local-a", "test", key, object{"op": "seed", "fence": fence, "revision": "9007199254740992"}, 200)
-	}
-	r.stop()
-	r = start(runtimeOwner, root, state, config, 1, false, "P0B_ENABLED:true")
+	r := start(runtimeOwner, root, state, config, 0, "P1_ENABLED:true")
 	c := pintlev1connect.NewLockServiceClient(client, r.base)
 	_, err = rpc(t, c, "missing", rpcRequest("missing-config", "a", "alice"))
 	expectCode(t, err, connect.CodeUnavailable)
 	r.stop()
 	a, b, other, rotated := token(t), token(t), token(t), token(t)
 	credentials := []object{
-		{"token": a, "tenant": "tenant-a", "subject": "alice", "namespaces": []string{"test", "n", strings.Repeat("n", 64)}},
-		{"token": b, "tenant": "tenant-b", "subject": "alice", "namespaces": []string{"test", "n", strings.Repeat("n", 64)}},
-		{"token": other, "tenant": "tenant-a", "subject": "bob", "namespaces": []string{"test", "n", strings.Repeat("n", 64)}},
-		{"token": rotated, "tenant": "tenant-a", "subject": "alice", "namespaces": []string{"test", "n", strings.Repeat("n", 64)}},
+		{"token": a, "tenant": "tenant-a", "subject": "alice", "namespaces": []string{"test", "n", "a", "a:b", strings.Repeat("n", 64)}},
+		{"token": b, "tenant": "tenant-b", "subject": "alice", "namespaces": []string{"test", "n", "a", "a:b", strings.Repeat("n", 64)}},
+		{"token": other, "tenant": "tenant-a", "subject": "bob", "namespaces": []string{"test", "n", "a", "a:b", strings.Repeat("n", 64)}},
+		{"token": rotated, "tenant": "tenant-a", "subject": "alice", "namespaces": []string{"test", "n", "a", "a:b", strings.Repeat("n", 64)}},
 	}
 	auth, err := json.Marshal(credentials)
 	if err != nil {
@@ -163,7 +159,7 @@ func TestP0b(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Remove(vars) })
-	r = start(runtimeOwner, root, state, config, 2, false, "P0B_ENABLED:true")
+	r = start(runtimeOwner, root, state, config, 2, "P1_ENABLED:true")
 	c = pintlev1connect.NewLockServiceClient(client, r.base)
 	const path = pintlev1connect.LockServiceTryAcquireProcedure
 	t.Run("generated_protobuf_roundtrip_replay_and_contention", func(t *testing.T) {
@@ -210,7 +206,7 @@ func TestP0b(t *testing.T) {
 			assertSame(t, res.Msg.Replayed, false)
 		}
 		_, err = rpc(t, c, other, rpcRequest("rpc-shared", "id", "worker"))
-		expectCode(t, err, connect.CodeAlreadyExists)
+		expectCode(t, err, connect.CodePermissionDenied)
 		res, err := rpc(t, c, rotated, rpcRequest("rpc-shared", "id", "worker"))
 		receipt(t, res, err)
 		assertSame(t, res.Msg.Replayed, true)
@@ -222,22 +218,20 @@ func TestP0b(t *testing.T) {
 		res, err = c.TryAcquire(context.Background(), req)
 		receipt(t, res, err)
 		assertSame(t, res.Msg.Replayed, true)
-		mustCall(t, r.base, "local-a", "test", "rpc-shared", object{"op": "vacate"}, 403)
 		status, _, _ := rawRPC(t, r.base, a, "POST", "/internal/p0b/try-acquire", bytes.NewReader(nil), nil)
-		assertSame(t, status, 403)
+		assertSame(t, status, 404)
 	})
-	t.Run("exact_tokens_over_protobuf", func(t *testing.T) {
-		for key, want := range map[string]string{"rpc-precision": "9007199254740993", "rpc-max": "18446744073709551615"} {
-			res, err := rpc(t, c, a, rpcRequest(key, "id", "worker"))
-			g := receipt(t, res, err)
-			assertSame(t, g.FencingToken, want)
-			assertSame(t, g.Revision, "9007199254740993")
-			res, err = rpc(t, c, a, rpcRequest(key, "id", "worker"))
-			assertSame(t, receipt(t, res, err).FencingToken, want)
+	t.Run("resource_tuple_and_special_characters", func(t *testing.T) {
+		for _, scope := range [][2]string{{"a:b", "c"}, {"a", "b:c"}, {"test", "x'); DROP TABLE records; --"}} {
+			msg := rpcRequest(scope[1], "tuple", "worker")
+			msg.Resource.Namespace = scope[0]
+			res, err := rpc(t, c, a, msg)
+			assertSame(t, receipt(t, res, err).FencingToken, "1")
+			assertSame(t, res.Msg.Replayed, false)
+			res, err = rpc(t, c, a, msg)
+			receipt(t, res, err)
 			assertSame(t, res.Msg.Replayed, true)
 		}
-		_, err := rpc(t, c, a, rpcRequest("rpc-exhausted", "id", "worker"))
-		expectCode(t, err, connect.CodeResourceExhausted)
 	})
 	t.Run("generated_client_validation_and_codec_errors", func(t *testing.T) {
 		cases := []*v1.TryAcquireRequest{{}, rpcRequest("", "id", "w"), rpcRequest("key", "", "w"), rpcRequest("key", "id", ""), rpcRequest(strings.Repeat("é", 65), "id", "w"), rpcRequest("key", strings.Repeat("a", 129), "w")}
@@ -458,7 +452,7 @@ func TestP0b(t *testing.T) {
 			t.Fatal("no upstream receipt")
 		}
 		r.stop()
-		r = start(runtimeOwner, root, state, config, 3, false, "P0B_ENABLED:true")
+		r = start(runtimeOwner, root, state, config, 3, "P1_ENABLED:true")
 		c = pintlev1connect.NewLockServiceClient(client, r.base)
 		res, err := rpc(t, c, a, msg)
 		receipt(t, res, err)
@@ -466,9 +460,6 @@ func TestP0b(t *testing.T) {
 		if !proto.Equal(res.Msg.GetAcquired(), original.GetAcquired()) {
 			t.Fatal("lost-response replay changed")
 		}
-		res, err = rpc(t, c, a, rpcRequest("rpc-precision", "id", "worker"))
-		assertSame(t, receipt(t, res, err).FencingToken, "9007199254740993")
-		assertSame(t, res.Msg.Replayed, true)
 	})
 	t.Run("already_cancelled_client", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())

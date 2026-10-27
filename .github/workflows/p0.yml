@@ -1,4 +1,4 @@
-name: P0 through P3 local correctness
+name: Pintle local correctness
 on:
   push:
   pull_request:

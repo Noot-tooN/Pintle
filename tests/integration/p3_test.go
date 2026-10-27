@@ -48,7 +48,7 @@ func staticSetup(t *testing.T, keys []object, vars ...string) (string, string, s
 	writeStatic(t, state, keys)
 	t.Cleanup(func() { os.Remove(filepath.Join(run, ".dev.vars")) })
 	config := protocolConfig(t, root, run)
-	r := start(t, root, state, config, 0, false, append([]string{"P2_ENABLED:true", "PINTLE_AUTH_MODE:static"}, vars...)...)
+	r := start(t, root, state, config, 0, append([]string{"P2_ENABLED:true", "PINTLE_AUTH_MODE:static"}, vars...)...)
 	t.Logf("P3 local state: %s", run)
 	return root, state, config, r
 }
@@ -108,7 +108,7 @@ func TestP3StaticAuthAndTransport(t *testing.T) {
 	// Rotation removes the old key while retaining tenant/subject and SQLite history.
 	r.stop()
 	writeStatic(t, state, keys[1:])
-	r = start(t, root, state, config, 1, false, "P2_ENABLED:true", "PINTLE_AUTH_MODE:static", "PINTLE_METRICS:true")
+	r = start(t, root, state, config, 1, "P2_ENABLED:true", "PINTLE_AUTH_MODE:static", "PINTLE_METRICS:true")
 	_, err = sdk(t, r.base, a, client).OpenSession(ctx, resource)
 	expectCode(t, err, connect.CodeUnauthenticated)
 	replay, err = sdk(t, r.base, rotated, client).TryAcquire(ctx, req)
@@ -182,7 +182,7 @@ func TestP3StaticConfigurationFailsClosed(t *testing.T) {
 				} else {
 					mode = "unexpected"
 				}
-				r = start(t, root, state, config, 1, false, "P2_ENABLED:true", "PINTLE_AUTH_MODE:"+mode)
+				r = start(t, root, state, config, 1, "P2_ENABLED:true", "PINTLE_AUTH_MODE:"+mode)
 			}
 			_, err := sdk(t, r.base, a, client).OpenSession(context.Background(), pintle.Resource{Namespace: "test", Key: "key"})
 			expectCode(t, err, expected)

@@ -1,4 +1,4 @@
-# P3 security review — local first pass
+# P3 security reviews — local evidence
 
 > Tooling update: command names below now use the root `justfile`. The milestone
 > runs originally used equivalent shell scripts; their captured transcripts are
@@ -7,6 +7,80 @@
 
 Reviewed 2026-10-26 as part of implementation. This is a self-review with executed
 regression/advisory tests, not an independent security audit or production signoff.
+
+## Separate local review, 2026-10-27
+
+Reviewed the implementation at `6a95342a0b2504c061eff39ac94b86b3b77eccdf` after
+writing the recovery runbooks, then verified the fixes below in the working tree.
+This was a separate security-focused pass by the same AI agent/session. It is not
+an independent human assessment and does not close that release gate.
+
+Scope: public/DO routing, auth defaults and identity propagation, request size and
+timeout limits, SQL parameter binding and transaction boundaries, lease/session
+authorization and replay, queue/counter bounds, SDK transport/renewal handling,
+secret exposure in errors/metrics, test-hook isolation and CI/deployment settings.
+Requirements came from PROJECT_SPEC sections B3/C, GUARANTEES I3/I4/I5/I9/I10 and
+the existing deployment restrictions, not solely the new test expectations.
+
+### Confirmed findings and fixes
+
+1. **Implicit test authentication (P2, configuration-dependent).** With P2 enabled,
+   no auth mode and only a `PINTLE_TEST_CREDENTIALS` secret, the gateway accepted
+   a fixture credential without expiry. This violates the intended explicit
+   opt-in to development authentication. Omitted mode now selects static policy;
+   absent/invalid static credentials fail closed. Generated local test configs
+   explicitly select test mode. The positive default-static path is also tested.
+2. **Obsolete P0 fixture exposed alongside service mode (P2, configuration-dependent).**
+   With P2/static auth and `LOCAL_SPIKE=true`, `/spike` still accepted the public
+   `local-a` identity and seeded a fixture resource. Initially, both handlers were
+   guarded against mixed service/auth modes. The subsequent consolidation removed
+   these handlers altogether (see ADR-014). This exposed separate P0 fixture
+   storage and resource/cost surface; it did not establish access to P2 mutex
+   records, which use different routing identities. The removed fixture can no
+   longer be enabled through configuration.
+
+Both reproductions failed against the pre-fix normal Wasm for the expected
+reason: session opening unexpectedly succeeded, and fixture seed returned 200
+instead of 403. The fixed runtime passed those cases. Expanded regression coverage
+checks all four service modes, plus positive static-default authentication.
+See [ADR-013](adr/ADR-013-safe-authentication-defaults.md).
+
+The full-suite run exposed a harness dependency on mixed P0/P0b modes. Its rollback
+and historical-replay assertions are retained: after scheduled calls finish, the
+harness stops the RPC runtime, inspects the same persisted state in fixture-only
+mode, then restarts RPC mode. No concurrent SQLite readers/writers in separate
+runtimes or production exceptions were introduced. Existing deterministic gates
+still select RPC ordering; restarts and watchdogs do not select winners.
+
+### Coverage limits
+
+Final verification: `./bin/just test` exited **0** on 2026-10-27 using the existing
+Hermit toolchain and locked dependencies, without additional test permissions.
+It passed schema/codegen/compatibility checks, Rust/Just formatting, Clippy, Go vet,
+32 native core tests, 2 auth tests, SDK race tests (1.176s), normal Wrangler/SQLite
+integration (43.832s) and instrumented deterministic integration (64.314s).
+Normal release Wasm was restored. Local documentation links and `git diff --check`
+also passed. No dependencies, core algorithms, persisted formats or wire schemas
+changed. No commit, push or deployment was performed for this follow-up.
+
+Local evidence (ignored): `test-results/security-before-fix.log` records the two
+reproductions; `security-after-fix.log` records the initial focused pass;
+`recovery-security-full-suite.log` records the final complete run. The six new
+configuration cases run in normal integration; controlled model/fault schedules
+remain in the instrumented run. The initial full run failed on the mixed-mode
+harness dependency described above; the final run includes its correction.
+
+This pass found no further confirmed defect in the reviewed boundaries. Existing
+tests supply the core concurrency/fault evidence; this is not exhaustive model
+checking or a whole-platform penetration test. The obsolete P0 fixture has since
+been removed; the configuration guards and harness workaround described above
+are historical steps, superseded by [test consolidation](test-consolidation-results.md).
+
+The optional host Opengrep scan could not start because its log path was outside
+the sandbox (`~/.opengrep/semgrep.log`), even with a temporary data-directory
+override. It produced no scan evidence; no permissions were widened or tool
+installed. No online advisory database refresh or hosted checks were performed.
+The earlier dated advisory results below are not a fresh vulnerability verdict.
 
 ## Boundaries and controls
 
@@ -50,6 +124,10 @@ change. Hermit tools, OS packages and arbitrary platform internals are outside
 this package-advisory coverage.
 
 ## Remaining risks and release obligations
+
+The [recovery policy and runbooks](recovery-policy.md) now document incident
+containment, same-attempt reconciliation and prohibited restoration/migration.
+They are operational requirements; hosted rehearsal and external review remain open.
 
 - No tenant-wide rate limits, resource-count quotas or abuse/cost controls. Bounded
   per-resource queues do not stop creation of unlimited resource names.

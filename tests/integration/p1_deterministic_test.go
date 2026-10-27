@@ -125,7 +125,7 @@ func (h *leaseHarness) fresh(t *testing.T, key string, ttl time.Duration) *pintl
 func (h *leaseHarness) restart() {
 	h.r.stop()
 	h.activation++
-	h.r = start(h.t, h.root, h.state, h.config, h.activation, false, "P1_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
+	h.r = start(h.t, h.root, h.state, h.config, h.activation, "P1_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+h.c.server.URL)
 }
 
 // Independent small reference model for the controlled three-operation histories.

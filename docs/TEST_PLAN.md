@@ -30,14 +30,15 @@
 regressions, and `just test-hardening`. The latter compiles test-only
 checkpoints outside the atomic transaction, explores all admission and response
 orders for three overlapping requests, controls deadline time/timer signals,
-injects read/write/acknowledgement faults, and checks recorded histories against
-an independent model. The default-build test verifies hooks are absent. Go's
+injects read/write/acknowledgement faults, and asserts the expected committed
+outcomes. Independent native models cover lease/session/wait transitions. The default-build test verifies hooks are absent. Go's
 race detector covers both integration runs.
 
 Evidence, exact bounds, reproduction commands, and remaining gaps are recorded
 in [hardening-results.md](hardening-results.md). Preserve these checks when
 extending the state machine. P1 now supplies corresponding lease coverage below;
-the original grant tests alone do not establish lease correctness.
+the obsolete P0 algorithm and its history checker have since been removed.
+See [the consolidation coverage map](test-consolidation-results.md).
 
 ### Implemented P1 gate
 
@@ -47,7 +48,7 @@ exact expiry edges, duplicate Renew/Release, 32 every-write rollback scenarios,
 six process shutdown boundaries, nine deadline/acknowledgement recovery cases,
 and persistent-clock regression. Real Go SDK tests add 24-client retries and
 contention, response-loss/status recovery, and local restart. The full Hermit
-suite includes both P0 and P1 tests with Go's race detector.
+suite includes the current implementations with Go's race detector.
 
 Logical time and explicit checkpoint release determine edge/concurrency outcomes;
 watchdogs only detect stalled tests. Finite schedules are not a proof of all
@@ -88,7 +89,7 @@ versus retry in every transaction/response order, exact expiry boundaries, SQL a
 Rust failures after each lifecycle write, unknown commits/restart, and actual
 workerd alarm cleanup with fault/restart recovery. SDK allocation is race-tested;
 1,100 local renew/ACK cycles demonstrate storage reuse beyond the old cap. The
-full suite retains all P0/P0b/P1 checks. Hosted validation remains a separate gate.
+full suite preserves P0/P0b invariants on the current implementations. Hosted validation remains a separate gate.
 
 ### Implemented P2 wait/cancellation gate
 
@@ -106,4 +107,16 @@ renewal budget and Stop/response boundaries, actual unknown-renewal recovery, st
 auth/rotation/isolation and exact credential times, 48 transport rejection cases,
 SDK malformed-response/redirect/size tests and sanitized metrics inspection.
 `just test` includes all prior regression gates and Go vet/race checks; separate
-`security-audit.sh` checks changing public advisory data. Hosted gates remain NOT RUN.
+`just audit` checks changing public advisory data. Hosted gates remain NOT RUN.
+
+### Recovery-policy security follow-up
+
+`TestSecurityConfigurationBoundaries` runs in normal local integration. It checks
+that absent auth mode cannot select fixture secrets, valid static defaults work,
+and removed fixture routes stay absent even with obsolete enabling variables.
+These assertions use fixed configuration and responses. Private SQLite snapshots
+check complete record rollback; offline counter setup covers values around 2^53
+and uint64 exhaustion. `TestMutexSchedules` covers all 108 three-request schedules,
+12 logical deadline boundaries, four timer races and six failure boundaries.
+`TestProtocol` exercises generated Connect transport against the lease implementation. See [security review](security-review.md)
+and the [recovery policy](recovery-policy.md); hosted rehearsals remain separate.

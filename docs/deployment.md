@@ -9,8 +9,7 @@ production deployment template with completed security/operations review.
 
 Run `./bin/just bootstrap`, `./bin/just test` and separately
 `./bin/just audit` using Hermit. The test suite restores a normal release
-Wasm artifact. A hosted artifact must omit `test-hooks`; never enable LOCAL_SPIKE,
-P0B_ENABLED, P1_ENABLED or P11_ENABLED alongside the current P2 service mode.
+Wasm artifact. A hosted artifact must omit `test-hooks`; never enable P1_ENABLED or P11_ENABLED alongside the current P2 service mode.
 Select `P2_ENABLED=true`, `PINTLE_AUTH_MODE=static`, and explicitly opt into
 `PINTLE_METRICS=true` if sanitized metrics are wanted. No flags are enabled here.
 
@@ -24,7 +23,11 @@ use the same identifier alphabet and maximum 64. Each key permits 1–16 explici
 namespaces, no wildcard. Total secret is at most 16 KiB and contains 1–16 keys.
 Do not put secrets in Wrangler vars, source control or command-line examples.
 Use the platform's [secret management](https://developers.cloudflare.com/workers/configuration/secrets/).
-Static mode never falls back to `PINTLE_TEST_CREDENTIALS`.
+Static mode never falls back to `PINTLE_TEST_CREDENTIALS`. Omitted auth mode now
+defaults to static; local protocol fixtures explicitly select `PINTLE_AUTH_MODE=test`.
+The obsolete `/spike` and P0b internal handlers have been removed. Old
+`LOCAL_SPIKE`/`P0B_ENABLED` variables cannot enable them. Counter setup and
+record inspection exist only in the local test process.
 
 Rotate by adding a new key with the same tenant/subject, distributing it to clients,
 verifying recovery through it, then removing/expiring the old key. Namespace changes
@@ -33,6 +36,9 @@ queued intents are not cancelled by key removal; an emergency revocation policy
 must account for those intents and existing downstream access.
 
 ## Authority history and operations
+
+Follow the [recovery policy and incident runbooks](recovery-policy.md) for unknown
+outcomes, storage/clock faults, alarms, credential compromise and software rollback.
 
 Keep Durable Object binding/class, resource routing and migrations stable. Never
 reset/delete fencing counters or restore an older snapshot while external systems

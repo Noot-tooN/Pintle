@@ -98,6 +98,9 @@ proof of hosted availability, bounded real-time expiry, or starvation freedom.
 
 ## Risks and non-guarantees
 
+The [recovery policy and runbooks](recovery-policy.md) define permitted recovery
+actions and the fail-closed response to missing or uncertain authority history.
+
 - **No generic exactly-once execution.** Fencing and idempotency of coordinator requests cannot make arbitrary HTTP/payment/file operations atomic.
 - **No instant stale-client revocation.** Lease expiry cannot forcibly interrupt a paused worker. Downstream fencing is separate.
 - **No cross-DO atomic transactions.** Every multi-key invariant must fit within one DO object for the first backend.

@@ -41,7 +41,7 @@ func TestDefaultBuildIgnoresTestController(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Remove(vars) })
-	r := start(t, root, filepath.Join(run, "state"), protocolConfig(t, root, run), 0, false, "P0B_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+server.URL)
+	r := start(t, root, filepath.Join(run, "state"), protocolConfig(t, root, run), 0, "P1_ENABLED:true", "PINTLE_TEST_SCHEDULER:"+server.URL)
 	defer r.stop()
 	req := connect.NewRequest(rpcRequest("disabled-hooks", "id", "alice"))
 	req.Header().Set("Authorization", "Bearer "+credential)

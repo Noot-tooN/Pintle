@@ -70,6 +70,12 @@ latency, deployment preparation and first-pass security review are complete.
 **Release gate remains OPEN:** hosted lifecycle/WAN/cost/operations validation,
 independent security review and final release approval. No deployment or push.
 
+Local follow-up, 2026-10-27: [recovery policy/runbooks](recovery-policy.md) and a
+[separate security-focused review](security-review.md) are documented. Two auth/fixture
+configuration findings were reproduced and fixed; the full suite passes. This
+same-session review does not replace independent external assessment or hosted
+recovery rehearsals. See [ADR-013](adr/ADR-013-safe-authentication-defaults.md).
+
 - Conformance/fault-injection suite, live Cloudflare staging checks with approval, p50/p95/p99 local and WAN measurements, hot-key behavior, operational limits, deployment documentation, basic metrics, security review, license approval.
 - Open-source release must explicitly state limitations and unsupported resource-fencing semantics.
 
@@ -87,3 +93,10 @@ independent security review and final release approval. No deployment or push.
 - Cancellation after committed grant; status lookup and clean-up protocol.
 - Connect on Wasm vs fallback; wire error model and authentication.
 - Snapshot/restore, authoritative handoff and fencing epoch safety (no support promised in v0.1).
+
+### P3 local test consolidation
+
+The obsolete P0/P0b runtime algorithm and JSON fixture are removed. Their useful
+atomicity, precision, ordering and transport checks now exercise the current
+lease/session implementation. See [coverage and verification](test-consolidation-results.md)
+and [ADR-014](adr/ADR-014-retire-p0-fixture.md). This does not close hosted gates.

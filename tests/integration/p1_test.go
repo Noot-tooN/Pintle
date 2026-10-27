@@ -42,7 +42,7 @@ func leaseSetup(t *testing.T, mode string, variables ...string) (string, string,
 	t.Cleanup(func() { os.Remove(vars) })
 	config := protocolConfig(t, root, run)
 	state := filepath.Join(run, "state")
-	r := start(t, root, state, config, 0, false, append([]string{mode}, variables...)...)
+	r := start(t, root, state, config, 0, append([]string{mode}, variables...)...)
 	return root, state, config, a, b, r
 }
 func sdk(t *testing.T, base, credential string, h connect.HTTPClient) *pintle.Client {
@@ -251,7 +251,7 @@ func TestP1SDK(t *testing.T) {
 			t.Fatal(err)
 		}
 		r.stop()
-		r = start(t, root, state, config, 1, false, "P1_ENABLED:true")
+		r = start(t, root, state, config, 1, "P1_ENABLED:true")
 		c = sdk(t, r.base, a, client)
 		replay, err := c.TryAcquire(ctx, request)
 		requireLease(t, replay, err)

@@ -84,7 +84,7 @@ test-runtime filter='.*':
     ./bin/go test -race -count=1 -timeout=3m -v ./tests/integration -run "$1"
 
 # Run controlled-clock/fault tests; always restore normal Wasm, including on failure.
-test-hardening filter='TestDeterministicHardening|TestHistoryChecker|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries':
+test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries':
     restore() {
       status=$?
       trap - EXIT
@@ -111,7 +111,3 @@ audit:
     mkdir -p test-results
     ./bin/npm audit --json > test-results/npm-audit.json
     ./bin/node tools/security-audit.mjs test-results/security-audit.json
-
-# Run the legacy P0 JSON fixture on loopback only; not the authenticated lease service.
-dev-spike:
-    ./bin/node node_modules/wrangler/bin/wrangler.js dev --local --ip 127.0.0.1 --var LOCAL_SPIKE:true
