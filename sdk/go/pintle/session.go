@@ -3,7 +3,7 @@ package pintle
 import (
 	"context"
 	"fmt"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
 	"strconv"
 	"sync"
 	"time"
@@ -26,6 +26,10 @@ func wireAttempt(a *Attempt) *v1.RequestAttempt {
 // Session manages resource-local sequence allocation. It never automatically
 // acknowledges results or renews ownership. Use Acknowledge after the application
 // has safely consumed/persisted the outcomes; Heartbeat maintains idle recovery.
+// Preparation consumes a sequence: do not discard prepared requests, mutate them,
+// or ACK past unresolved work. Methods may be called concurrently; callers must
+// coordinate when all earlier results are safe to acknowledge. The zero value
+// is not usable; obtain a Session with Client.OpenSession.
 type Session struct {
 	client             *Client
 	resource           Resource

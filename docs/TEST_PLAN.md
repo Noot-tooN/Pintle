@@ -102,12 +102,19 @@ milestones remain regression coverage. Timing/watchdog and model bounds are expl
 
 ### Implemented P3 local hardening gate
 
+Release scope is defined by the [OSS/deployment/SaaS checklist](release-checklist.md).
+Keep isolation, authorization and existing resource-bound regressions in the OSS
+suite. Tenant-wide customer quotas are deferred; no such implementation or tests
+are required by P3. Hosted measurements only support their recorded claims, and
+operator alert/incident rehearsals are separate from deterministic conformance.
+
 [P3 results](p3-results.md) records 37,448 independent two-waiter model prefixes,
 renewal budget and Stop/response boundaries, actual unknown-renewal recovery, static
 auth/rotation/isolation and exact credential times, 48 transport rejection cases,
 SDK malformed-response/redirect/size tests and sanitized metrics inspection.
 `just test` includes all prior regression gates and Go vet/race checks; separate
-`just audit` checks changing public advisory data. Hosted gates remain NOT RUN.
+`just audit` checks changing public advisory data. The hosted smoke subset now
+passes; the broader release gates remain open (see below).
 
 ### Recovery-policy security follow-up
 
@@ -120,3 +127,82 @@ and uint64 exhaustion. `TestMutexSchedules` covers all 108 three-request schedul
 12 logical deadline boundaries, four timer races and six failure boundaries.
 `TestProtocol` exercises generated Connect transport against the lease implementation. See [security review](security-review.md)
 and the [recovery policy](recovery-policy.md); hosted rehearsals remain separate.
+
+### First hosted smoke evidence
+
+`tests/hosted` contains public-API smoke scenarios reused by normal local
+`TestHostedSuiteLocally`. `just test-staging` explicitly enables remote execution
+with a validated staging origin/token and a 96-request cap. Default CI and
+`just test` run only guard tests and the local copy. On 2026-10-27 the real
+Cloudflare Free staging deployment passed all six scenarios with 46 transport
+attempts in 17.732s: authentication, lifecycle/replay/ACK, concurrent grants and
+duplicates, pending cancellation/handoff, committed-response loss and expiry
+handoff. These are observed public-API invariants, not deterministic hosted
+clock/fault schedules. See [hosted results](staging-results.md),
+[staging scope and limits](staging.md) and [local preparation evidence](staging-preparation-results.md).
+
+### Hosted lifecycle and rotation follow-up
+
+`TestHostedLifecycleLocally` reuses public-API scenarios with real local process
+replacement and credential overlap/removal. It verifies stable per-instance
+diagnostic markers and changed markers after replacement. Parser/body-buffer
+tests check strict log field filtering and bounded response preservation.
+`just test-staging-lifecycle` explicitly enables the remote version (one resource,
+96 transport attempts, 12-minute watchdog). It is excluded from default CI.
+
+Hosted replacement/receipt/FIFO persistence and credential rotation passed twice.
+The combined live-tail test did not pass because required authority events were
+missing. The separate `just test-staging-alarms` subsequently passed using an
+explicitly provided observability token and persisted logs: alarm-only handoff,
+idle reconstruction after 300,023 ms without client RPCs, expired-session rejection
+and session/fencing continuity. It used ten client calls and 75 bounded management
+queries, without deploying or rotating keys. Decoder/budget checks are local and
+deterministic. See [the full evidence](staging-lifecycle-results.md). Logical-clock
+and failure schedules remain controlled locally; hosted timing is observational.
+
+### Bounded hosted resilience and capacity evidence
+
+`RunCapacity` is shared by `TestHostedCapacityLocally` in normal Wrangler integration
+and the explicitly opted-in `TestStagingCapacity`. It covers cancellation after
+observed Pending admission, same-attempt reconciliation, normal maintenance,
+lost/delayed committed renewal responses, Stop/Lost ownership semantics, small
+concurrency batches, 16-waiter exhaustion/reuse and the reserved session slot.
+ACK/Pending/Lost barriers control sequencing; fault injection follows a fully read
+successful response. Concurrent winners and wall-clock latency are not assertions.
+The exact logical-clock races remain in native/instrumented tests.
+
+`TestCapacityGuards` deterministically checks the request budget, server-error stop,
+cancelled transport-slot wait, nearest-rank quantiles and response-fault barriers.
+Default CI runs these guards and local scenarios; hosted runs remain opt-in.
+The 2026-10-27 staging pass used 389 RPCs, six resources and peak concurrency 16.
+See [results and measurement limits](staging-capacity-results.md): small samples
+from one network location do not establish saturation throughput, global latency,
+resource billing, memory use or arbitrary provider failure recovery.
+
+### SDK usability, consumer packaging and runnable examples
+
+`TestInvalidCapabilityDoesNotConsumeSessionPosition` verifies malformed ownership
+capabilities fail before preparation consumes an ACK-window position. It reproduced
+the prior failure; session reservation/concurrency coverage remains unchanged.
+`TestOnlyHistoricalGoPackageIsNormalized` constrains the exact pre-publication
+Go import metadata exception; Buf still compares all wire fields/methods/options.
+
+`just check-sdk-package`, included by `just test`, builds the real example from an
+independent module with a local replacement, `GOWORK=off` and network fetching off.
+`TestSDKExamples` builds the command with `-race` and executes all three modes as
+processes against normal local Wrangler. It covers both ordered cancellation
+outcomes, explicit Release/ACK and Maintain/Lost with a real committed reply dropped.
+It supplements existing concurrent/fault tests rather than duplicating their full
+matrix. No hosted traffic is added. See [review results](sdk-review-results.md).
+
+### Separate security-review regressions
+
+The existing Client formatting test now covers pointer/value, slice and struct
+contexts with `%v`, `%+v` and `%#v`, using a synthetic credential. It reproduces
+the pre-fix disclosure without printing the credential itself.
+`TestSecurityP2PrincipalBoundaries` runs against normal Wasm: another authenticated
+principal with the full owner capability/request cannot replay/read/ACK, renew,
+release or cancel the owner's intent. A forged subject header on the owner's
+actual acquisition envelope is rejected, the direct internal route is absent,
+and the real owner can still reconcile, Release and ACK. Ordering is explicit;
+deadlines are watchdogs. See [security evidence](security-pass-results.md).

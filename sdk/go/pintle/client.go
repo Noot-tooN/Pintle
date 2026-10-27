@@ -1,6 +1,3 @@
-// Package pintle provides server-owned lease operations. It never implements
-// contention loops or assumes a timed-out RPC was rolled back. Prepare a request
-// once and reuse that same value for transport retries or status reconciliation.
 package pintle
 
 import (
@@ -15,8 +12,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
-	"pintle.local/spike/gen/go/pintle/v1/pintlev1connect"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
+	"github.com/Noot-tooN/Pintle/gen/go/pintle/v1/pintlev1connect"
 )
 
 type Resource struct{ Namespace, Key string }
@@ -88,6 +85,9 @@ func NewRequestID() (string, error) {
 	_, err := rand.Read(b[:])
 	return hex.EncodeToString(b[:]), err
 }
+
+// NewAcquire prepares a low-level request without a recovery session. For the
+// current service use Session.NewAcquire instead; a session attempt is required.
 func NewAcquire(resource Resource, holder string, ttl time.Duration) (AcquireRequest, error) {
 	if !validResource(resource) || !identifier(holder, 64) {
 		return AcquireRequest{}, fmt.Errorf("invalid resource or holder")
@@ -95,13 +95,33 @@ func NewAcquire(resource Resource, holder string, ttl time.Duration) (AcquireReq
 	id, err := NewRequestID()
 	return AcquireRequest{Resource: resource, RequestID: id, HolderRef: holder, TTL: ttl}, err
 }
+
+// NewRenew prepares a low-level request without a recovery session. Use
+// Session.NewRenew for the current service.
 func NewRenew(lease Lease, ttl time.Duration) (RenewRequest, error) {
+	if err := validateOwnership(lease); err != nil {
+		return RenewRequest{}, err
+	}
 	id, err := NewRequestID()
 	return RenewRequest{Lease: lease, RequestID: id, TTL: ttl}, err
 }
+
+// NewRelease prepares a low-level request without a recovery session. Use
+// Session.NewRelease for the current service.
 func NewRelease(lease Lease) (ReleaseRequest, error) {
+	if err := validateOwnership(lease); err != nil {
+		return ReleaseRequest{}, err
+	}
 	id, err := NewRequestID()
 	return ReleaseRequest{Lease: lease, RequestID: id}, err
+}
+
+func validateOwnership(l Lease) error {
+	capability, err := hex.DecodeString(l.LeaseID)
+	if !validResource(l.Resource) || err != nil || len(capability) != 32 || hex.EncodeToString(capability) != l.LeaseID {
+		return fmt.Errorf("valid resource and canonical lease capability required")
+	}
+	return nil
 }
 
 type Client struct {
@@ -109,8 +129,9 @@ type Client struct {
 	credential string
 }
 
-func (c *Client) String() string   { return "Client{credential=REDACTED}" }
-func (c *Client) GoString() string { return c.String() }
+// Value receivers also redact Client values copied into debug containers.
+func (c Client) String() string   { return "Client{credential=REDACTED}" }
+func (c Client) GoString() string { return c.String() }
 
 // New uses binary unary Connect. HTTP is suitable for local tests; use HTTPS
 // outside loopback. The default transport refuses redirects; custom transports

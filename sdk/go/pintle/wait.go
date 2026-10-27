@@ -3,7 +3,7 @@ package pintle
 import (
 	"context"
 	"fmt"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
 	"time"
 )
 

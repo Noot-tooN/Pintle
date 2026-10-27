@@ -27,6 +27,9 @@ func localRecords(t *testing.T, root, state string) map[string]map[string]string
 const result = {};
 for (const path of files(state)) {
  const db = new DatabaseSync(path, {readOnly:true});
+ // workerd can briefly lock SQLite for background storage work even while
+ // domain mutations are parked. Bound the inspection wait; never skip a read.
+ db.exec('PRAGMA busy_timeout=5000');
  if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='records'").get()) {
   db.exec('BEGIN');
   result[relative(state,path)] = Object.fromEntries(db.prepare('SELECT key,value FROM records ORDER BY key').all().map(r=>[r.key,r.value]));

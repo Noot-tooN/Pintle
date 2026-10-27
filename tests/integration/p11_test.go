@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"path/filepath"
-	pintle "pintle.local/spike/sdk/go/pintle"
+	pintle "github.com/Noot-tooN/Pintle/sdk/go/pintle"
 	"strconv"
 	"sync"
 	"testing"

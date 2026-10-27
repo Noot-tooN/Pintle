@@ -2,7 +2,7 @@
 
 An open-source distributed coordination platform with a portable Rust core.
 
-**Current status: P3 local hardening passes; hosted release gates remain open.** The portable Rust core implements
+**Current status: P3 local hardening, hosted lifecycle checks and a bounded resilience/capacity pass; release gates remain open.** The portable Rust core implements
 server-owned FIFO Acquire, TryAcquire, Renew, Release, cancellation, and request-status
 recovery. A generated Go Connect client and [Go SDK](sdk/go/pintle/client.go) call the compiled Rust/Wasm
 Worker and Durable Object backed by SQLite. The schema is unpublished.
@@ -42,11 +42,14 @@ After `source ./bin/activate-hermit`, use `just` directly from any subdirectory.
 | `./bin/just check` | Formatting, lint, codegen compatibility and Go vet |
 | `./bin/just test-core` | Native Rust core/auth tests |
 | `./bin/just test-sdk` | Go SDK unit tests with the race detector |
+| `./bin/just check-sdk-package` | Build the example from an independent Go consumer module |
+| `./bin/just example-local` | Run lifecycle, cancellation and recovery examples against local Wrangler |
 | `./bin/just test-runtime` | Build normal Wasm and test real local Wrangler |
 | `./bin/just test-hardening` | Instrumented deterministic tests; restore normal Wasm |
 | `./bin/just test` | Complete local suite, sequentially |
 | `./bin/just generate` | Regenerate Rust/Go Protobuf code |
 | `./bin/just audit` | Online npm/OSV advisory checks |
+| `./bin/just security-scan /path/to/go-rules.yaml` | Optional local Opengrep scan of production Go files; requires an installed scanner and local rules, keeps state inside Pintle |
 
 Focused test recipes accept an optional filter, e.g.
 `./bin/just test-sdk TestMaintenance` or `./bin/just test-core independent_two_waiter`.
@@ -77,6 +80,12 @@ Regenerate the checked-in Rust types, Go messages, and Go client with
 The schema is in [`proto/pintle/v1/lock.proto`](proto/pintle/v1/lock.proto), and the
 generated Go client is under [`gen/go/pintle/v1`](gen/go/pintle/v1).
 
+Start with the [Go SDK guide](sdk/go/pintle/README.md) and
+[runnable examples](examples/README.md). The canonical module is
+`github.com/Noot-tooN/Pintle`, with SDK import
+`github.com/Noot-tooN/Pintle/sdk/go/pintle`. This API is unpublished/unfrozen;
+the guide documents local consumption without claiming a released version.
+
 The obsolete P0 JSON fixture and P0b grant implementation have been removed.
 Their useful checks now exercise the lease/session implementation. There are no
 HTTP seed, vacate or snapshot controls. Private tests inspect SQLite at controlled
@@ -97,6 +106,15 @@ Run `./bin/just audit` separately for online npm/OSV advisory checks.
 See [deployment preparation](docs/deployment.md), [security review](docs/security-review.md),
 and the [SDK maintenance contract](docs/p3-results.md#sdk-maintenance-contract).
 For incident handling, see the [recovery policy and runbooks](docs/recovery-policy.md).
+The [isolated staging setup](docs/staging.md) provides dry-run and opt-in hosted
+smoke commands. The first real Cloudflare Free deployment passed all six hosted
+smoke scenarios; see [hosted results and remaining limits](docs/staging-results.md).
+The follow-up verified hosted redeployment persistence, credential rotation,
+alarm-only handoff and idle authority reconstruction using persisted logs. See
+the [lifecycle results](docs/staging-lifecycle-results.md) for evidence, earlier
+observer failures and remaining release limits.
+The [bounded capacity pass](docs/staging-capacity-results.md) adds disconnect and
+renewal-response recovery, session/waiter exhaustion and single-location WAN samples.
 
 ## Architecture and evidence
 
@@ -134,8 +152,15 @@ For incident handling, see the [recovery policy and runbooks](docs/recovery-poli
 - [`AGENTS.md`](AGENTS.md) and [`START_HERE_AGENT_PROMPT.md`](START_HERE_AGENT_PROMPT.md):
   implementation instructions.
 
-The next step is to complete **P3 staging and release gates** under separate
-explicit authorization, before P4 helpers. Local hardening includes lease-loss
-behavior, static credential rotation/expiry, sanitized metrics, and expanded tests;
-hosted clock/failover, WAN/cost/operations and independent review remain open.
+The [P3 API/SDK review](docs/sdk-review-results.md) adds runnable examples,
+canonical Go packaging, a preparation fix and full-suite evidence. Next complete
+independent security review, vulnerability-report triage, final documentation and
+release-candidate validation. See the
+[release checklist](docs/release-checklist.md) for completed evidence and open items.
+Tenant-wide quotas, customer plans and billing are deferred to a future SaaS;
+existing authenticated isolation and safety limits stay in place. OSS provides
+telemetry and runbooks; operators configure deployment alerts and workload limits.
+P4 helpers follow the OSS gate. Hosted clock/failover guarantees remain limited
+to the explicitly observed scenarios; OSS publication does not approve a
+production deployment or a public SaaS launch.
 Existing licensing is preserved in [`LICENSE`](LICENSE).

@@ -16,7 +16,7 @@ extern "C" {
     #[wasm_bindgen(js_namespace = crypto, js_name = getRandomValues, catch)]
     fn random_values(array: &js_sys::Uint8Array) -> std::result::Result<JsValue, JsValue>;
 }
-fn new_token() -> Result<String> {
+pub(crate) fn new_token() -> Result<String> {
     let bytes = js_sys::Uint8Array::new_with_length(32);
     random_values(&bytes)?;
     Ok(bytes.to_vec().iter().map(|b| format!("{b:02x}")).collect())

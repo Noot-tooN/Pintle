@@ -3,10 +3,10 @@ package pintle
 import (
 	"context"
 	"fmt"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
 	"google.golang.org/protobuf/proto"
 	"net/http"
 	"net/http/httptest"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
 	"strings"
 	"testing"
 )
@@ -97,9 +97,11 @@ func TestClientStringRedactsCredential(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{fmt.Sprint(c), fmt.Sprintf("%+v", c), fmt.Sprintf("%#v", c)} {
-		if strings.Contains(value, secret) {
-			t.Fatal("credential logged")
+	for _, value := range []any{c, *c, []Client{*c}, struct{ Client Client }{*c}} {
+		for _, format := range []string{"%v", "%+v", "%#v"} {
+			if strings.Contains(fmt.Sprintf(format, value), secret) {
+				t.Errorf("credential logged for %T using %s", value, format)
+			}
 		}
 	}
 }

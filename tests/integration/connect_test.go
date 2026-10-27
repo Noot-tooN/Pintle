@@ -24,8 +24,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
-	"pintle.local/spike/gen/go/pintle/v1/pintlev1connect"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
+	"github.com/Noot-tooN/Pintle/gen/go/pintle/v1/pintlev1connect"
 )
 
 func rpcRequest(key, id, holder string) *v1.TryAcquireRequest {

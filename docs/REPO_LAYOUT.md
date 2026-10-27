@@ -37,7 +37,7 @@ The important separation is Rust coordination state transitions independent of p
 
 ## Implemented through P2
 
-The current workspace has `core` (generic Transaction plus P0 grant and P1 lease
+The current workspace has `core` (generic Transaction and lease
 transitions), `protocol` (generated Prost messages), and `cloudflare` (Fetch,
 authentication, DO/SQLite, clock/randomness adapters). Generation tooling is in
 `tools/proto-gen`; generated Go messages/Connect clients are in `gen/go`, and the
@@ -65,7 +65,17 @@ Core coordination stays in Rust. P3 integration and deterministic tests are in
 ## Development commands
 
 The root `justfile` is authoritative for bootstrap, generation, checking, builds,
-tests, audits and the local fixture. Just is pinned through Hermit. CI and Wrangler
+tests, audits and explicit staging operations. Just is pinned through Hermit. CI and Wrangler
 invoke the same recipes. There are no project shell/npm wrappers; the standalone
 OSV query program lives in `tools/security-audit.mjs`. Test assertions and runtime
 lifecycle control remain in Rust/Go. See [ADR-012](adr/ADR-012-just-command-interface.md).
+
+`wrangler.staging.jsonc` isolates the hosted staging Worker and SQLite namespace.
+`tests/hosted` holds bounded public-API smoke, lifecycle and resilience/capacity scenarios; the normal local integration
+suite exercises them before any opt-in remote run. See [staging.md](staging.md).
+
+The root Go module `github.com/Noot-tooN/Pintle` packages `sdk/go/pintle` and the
+generated Go protocol together. `examples/mutex` is the runnable public SDK command;
+`tests/integration/sdk_examples_test.go` exercises it against local Wrangler.
+`tools/proto-compat` preserves strict Buf comparisons across the one historical
+pre-publication Go import-path correction. See [ADR-019](adr/ADR-019-go-sdk-packaging-and-examples.md).

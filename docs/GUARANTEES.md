@@ -32,12 +32,12 @@ fails closed. Authority time is not a bounded elapsed-real-time guarantee.
 | Invariant | Current evidence / unsupported scope |
 | --- | --- |
 | I1–I4 | Native independent lease model and controlled expiry/concurrency tests; only within the declared authority-clock and continuous-storage model. |
-| I5 | Actual local SQLite rollback at every lifecycle write; storage.sync before acknowledgement; local process restart. Hosted replication/durability unverified. |
-| I6 | P2 durable FIFO registration, sticky bounded notification, controlled release/read gaps, actual expiry alarms, and restart/resume pass locally. Hosted liveness remains unverified. |
+| I5 | Actual local SQLite rollback at every lifecycle write; storage.sync before acknowledgement; local process restart. Hosted normal redeployment and idle reconstruction preserve history. Physical replica loss/partition durability is unverified. |
+| I6 | P2 durable FIFO registration, notification and controlled schedules pass locally. Hosted expiry-alarm handoff and idle cleanup were observed without client RPCs; this is not a bounded liveness/SLA guarantee. |
 | I7 | Same-ID retry and status after response loss, controlled precommit/post-sync shutdown, deadline and acknowledgement errors. NotFound cannot rule out later commit. |
-| I8 | Hosted partition/failover and authority replacement unverified. No cross-authority safety claim. |
-| I9 | Authenticated tenant/namespace routing and local fixture isolation tests. Production authentication policy remains open. |
-| I10 | Bounds, checked counters, receipt capacity, and unsupported wire modes fail explicitly in local tests; operational limits beyond tested cases remain unverified. |
+| I8 | Hosted runtime reconstruction was observed across redeployment and idle cleanup. Physical partition/failover and cross-authority handoff remain unverified/unsupported. |
+| I9 | Authenticated tenant/namespace routing and local isolation tests, plus hosted static authentication and credential rotation from one client location. Global revocation timing and production operator policy remain open. |
+| I10 | Bounds, checked counters, receipt capacity, and unsupported wire modes fail explicitly in local tests. Hosted waiter/session exhaustion and reuse passed a bounded rehearsal; operational limits beyond tested cases remain unverified. |
 
 **P1.1 recovery sessions pass locally.** [P1.1 results](p11-results.md) and
 [ADR-009](adr/ADR-009-bounded-recovery-sessions.md) supersede the 1,024 lifetime
@@ -83,6 +83,13 @@ proof of hosted availability, bounded real-time expiry, or starvation freedom.
 
 **Outstanding design obligation:** hosted time behavior under drift, pauses, and region replacement; reliable fencing across snapshots/migration; hosted cleanup availability and storage/cost behavior; hosted wait/notification liveness and performance; tenant fairness beyond the bounded FIFO policy.
 
+These are boundaries on guarantees, not a commitment to implement every future
+feature before OSS release. Tenant-wide quotas/fair admission and resource-count
+allowances are deferred hosting/SaaS policy. Authenticated isolation, ownership
+authorization and current per-resource safety bounds remain required. The
+[release checklist](release-checklist.md) separates OSS evidence from deployment
+and future SaaS requirements; no existing invariant is weakened by that separation.
+
 ## Required invariant suite
 
 - `I1`: Never commit two different *unexpired grants* for the same resource whose validity overlaps under the server's declared time model. Caveat: execution of stale workers may still overlap.
@@ -121,4 +128,6 @@ See authoritative platform semantics: https://developers.cloudflare.com/durable-
 and admission-boundary checks, renewal/Lost failure ordering and real committed-response
 loss recovery, SDK response validation, sanitized metrics and local latency observations.
 Lost is not proof of ownership or immediate revocation; static key expiry/removal does
-not cancel already admitted durable intent. Hosted/release guarantees remain unverified.
+not cancel already admitted durable intent. Subsequent [hosted resilience/capacity
+evidence](staging-capacity-results.md) covers a bounded subset; it does not establish
+general hosted availability or production readiness.

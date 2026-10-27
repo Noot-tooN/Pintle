@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pintle.v1;
 
-option go_package = "pintle.local/spike/gen/go/pintle/v1;pintlev1";
+option go_package = "github.com/Noot-tooN/Pintle/gen/go/pintle/v1;pintlev1";
 
 // Unpublished P2 lease service with durable server-owned waiting; no stability promise yet.
 service LockService {

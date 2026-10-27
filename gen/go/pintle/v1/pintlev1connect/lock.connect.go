@@ -8,8 +8,8 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1"
 	http "net/http"
-	v1 "pintle.local/spike/gen/go/pintle/v1"
 	strings "strings"
 )
 

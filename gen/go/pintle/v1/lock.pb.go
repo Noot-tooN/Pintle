@@ -1647,7 +1647,7 @@ const file_pintle_v1_lock_proto_rawDesc = "" +
 	"\aRelease\x12\x19.pintle.v1.ReleaseRequest\x1a\x1a.pintle.v1.ReleaseResponse\x12[\n" +
 	"\x10GetRequestStatus\x12\".pintle.v1.GetRequestStatusRequest\x1a#.pintle.v1.GetRequestStatusResponse\x12L\n" +
 	"\vOpenSession\x12\x1d.pintle.v1.OpenSessionRequest\x1a\x1e.pintle.v1.OpenSessionResponse\x12a\n" +
-	"\x12AcknowledgeSession\x12$.pintle.v1.AcknowledgeSessionRequest\x1a%.pintle.v1.AcknowledgeSessionResponseB.Z,pintle.local/spike/gen/go/pintle/v1;pintlev1b\x06proto3"
+	"\x12AcknowledgeSession\x12$.pintle.v1.AcknowledgeSessionRequest\x1a%.pintle.v1.AcknowledgeSessionResponseB7Z5github.com/Noot-tooN/Pintle/gen/go/pintle/v1;pintlev1b\x06proto3"
 
 var (
 	file_pintle_v1_lock_proto_rawDescOnce sync.Once

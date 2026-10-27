@@ -6,8 +6,16 @@
 > suite run through Just.
 
 **LOCAL PASS, 2026-10-26, macOS arm64. Full P3 release gate remains OPEN.**
-No deployment, push, commit, hosted credentials, or new third-party dependency
-installation. Existing Hermit toolchains and locked dependencies were used.
+
+This page preserves the dated local run. Subsequent 2026-10-27
+[hosted smoke](staging-results.md), [lifecycle/rotation/alarm evidence](staging-lifecycle-results.md)
+and [bounded resilience/capacity results](staging-capacity-results.md) supersede
+the historical "NOT RUN" list for their specific scenarios. These are finite
+staging observations; production release approval and broader operational gates
+remain open. See the current [implementation plan](IMPLEMENTATION_PLAN.md).
+The original local run performed no deployment, push, commit, hosted credential
+setup or new dependency installation. Existing Hermit toolchains and locked
+dependencies were used.
 
 ## Changes
 
@@ -114,11 +122,16 @@ New static auth allows 1–16 credentials, secret JSON at most 16 KiB, explicit
 and subject. Revocation denies new admissions; existing durable intent can still
 grant. See [deployment preparation](deployment.md) and [security review](security-review.md).
 
-NOT RUN: hosted staging lifecycle/failover/clock checks, WAN measurements, hosted
+NOT RUN **as of this local 2026-10-26 run**: hosted staging lifecycle/failover/clock checks, WAN measurements, hosted
 CPU/RSS/cost/limits, secret propagation, telemetry export and independent security
 review. These require separate preparation/authorization and cannot be inferred
 from local workerd. Snapshot restore/migration remains unsupported. Existing
 Apache-2.0 licensing is preserved; final OSS release approval is still required.
 
-Recommended next: complete the remaining **P3 staging and release gates**, when
-explicitly authorized, before P4 helpers or any production claim.
+The subsequent [API/SDK review](sdk-review-results.md) fixes packaging/preparation
+issues and adds runnable examples. Current next step: complete the **P3 OSS
+release checklist** for independent security review, documentation, candidate
+validation and release approval. [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md) separates
+those requirements from operator readiness and deferred SaaS quotas/customer policy.
+See the [checklist](release-checklist.md). Existing isolation and safety bounds
+remain required; P4 follows the OSS gate, and production use needs its own approval.

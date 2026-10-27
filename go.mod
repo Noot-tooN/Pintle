@@ -1,4 +1,4 @@
-module pintle.local/spike
+module github.com/Noot-tooN/Pintle
 
 go 1.27.3
 

@@ -121,6 +121,7 @@ pub async fn main(req: worker::Request, env: Env, _ctx: Context) -> Result<Respo
 
 #[durable_object]
 pub struct PintleAuthority {
+    instance: std::cell::OnceCell<Option<String>>,
     notifications: notify::Notifications,
     state: State,
     env: Env,
@@ -129,17 +130,26 @@ pub struct PintleAuthority {
 impl DurableObject for PintleAuthority {
     fn new(state: State, env: Env) -> Self {
         Self {
+            // Initialize diagnostic entropy inside an event, not construction.
+            instance: std::cell::OnceCell::new(),
             state,
             env,
             notifications: notify::Notifications::default(),
         }
     }
     async fn alarm(&self) -> Result<Response> {
-        lease_rpc::alarm(&self.env, &self.state, &self.notifications).await
+        let result = lease_rpc::alarm(&self.env, &self.state, &self.notifications).await;
+        let instance = self.instance.get_or_init(|| metrics::instance(&self.env));
+        metrics::authority(instance.as_deref(), "alarm", &result);
+        result
     }
     async fn fetch(&self, req: worker::Request) -> Result<Response> {
         if lease_rpc::is_internal(&req) {
-            return lease_rpc::authority(req, &self.env, &self.state, &self.notifications).await;
+            let result =
+                lease_rpc::authority(req, &self.env, &self.state, &self.notifications).await;
+            let instance = self.instance.get_or_init(|| metrics::instance(&self.env));
+            metrics::authority(instance.as_deref(), "fetch", &result);
+            return result;
         }
         Response::error("not found", 404)
     }

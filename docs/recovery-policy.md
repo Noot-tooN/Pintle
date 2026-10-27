@@ -1,7 +1,9 @@
 # Recovery policy and incident runbooks
 
-Status: local v0.1 policy, 2026-10-27. Hosted procedures require staging rehearsal
-before production use. This policy preserves the authority-history requirements
+Status: v0.1 policy, 2026-10-27. Hosted restart, rotation and alarm/idle scenarios
+have bounded [staging evidence](staging-lifecycle-results.md). Human incident
+response, compatible software rollback and remaining release procedures still
+require rehearsal before production use. This policy preserves the authority-history requirements
 in [GUARANTEES.md](GUARANTEES.md); it does not add a restore or migration feature.
 
 ## Supported recovery boundary
@@ -16,7 +18,7 @@ secret/evidence storage, never ordinary logs or issue reports.
 | Situation | Policy |
 | --- | --- |
 | Client timeout, lost reply or process restart | Reconcile the same prepared request against the same authority, while its session/result remains retained. |
-| Worker restart with unchanged durable history | Resume against existing storage; local process-restart evidence exists. Hosted lifecycle remains unverified. |
+| Worker restart with unchanged durable history | Resume against existing storage; local process restart, hosted normal redeployment and idle reconstruction preserve tested ownership/receipt/fencing history. Physical failover is not established. |
 | Expired/acknowledged recovery result | Historical outcome is unavailable. Do not infer failure or repeat the logical operation with a fresh identity. |
 | Missing, corrupt or uncertain authority history | Fail closed and quarantine affected work. No automatic empty-state replacement. |
 | Older snapshot, namespace replacement, routing change or authority migration | Unsupported. Do not reopen admissions against restored/reset counters. |
@@ -36,10 +38,12 @@ through storage access controls and incident procedure is mandatory.
 
 ## Incident ownership and evidence
 
-Before staging, assign an incident lead and an operator with access to deployment,
-secret and storage controls. Before production, assign on-call coverage and a
-private vulnerability-reporting channel. These roles/contact details are not yet
-configured by this repository.
+For each staging or production deployment, its operator identifies who controls
+deployment, secrets and storage. Before production use, that operator configures
+alerts and incident coverage. Separately, OSS release requires a private
+vulnerability-reporting channel and maintainer triage; it does not require a
+managed paging service. These roles/contact details are not configured by this
+repository. See the [separate release and deployment gates](release-checklist.md).
 
 For every incident, record time, affected scope, deployed source/artifact revision,
 configuration revision, observed RPC codes, known commit/response boundaries and
@@ -109,8 +113,10 @@ forever. See [ADR-009](adr/ADR-009-bounded-recovery-sessions.md).
    expiry reclaim abandoned sessions; do not delete records or reset metadata.
 3. Pending work cannot be ACKed away. Cancel it explicitly with its original
    request, then inspect whether cancellation or grant won.
-4. Reduce admission pressure when queues/session windows are full. Rate-limit
-   tenant traffic externally until tenant-wide quota/cost controls are designed.
+4. Reduce admission pressure when queues/session windows are full. Use deployment
+   access controls or external admission limits as appropriate, preserving a path
+   for Release and recovery. Tenant-wide quota/cost policy is deferred hosting/SaaS
+   work; do not bypass existing isolation or bounds while waiting for it.
 5. Persistent scheduler/storage failure requires incident escalation. The durable
    fallback alarm and platform retries are not an unlimited availability promise.
 
@@ -128,7 +134,9 @@ forever. See [ADR-009](adr/ADR-009-bounded-recovery-sessions.md).
 4. A lost key must not cause reassignment of the old principal to a different
    customer: retained sessions are authorized by stable principal identity.
 5. Resume after access restoration and the effect of outstanding intents are
-   understood. Secret propagation/access controls still require staging evidence.
+   understood. Overlap/removal and recovery through the replacement key passed
+   staging from one client location; global propagation and emergency operator
+   access/containment are still unmeasured.
 
 ## Runbook: failed upgrade or proposed rollback
 
@@ -151,8 +159,11 @@ per-write rollback, lost replies, restart, ACK and session reclamation. See
 SDK Lost is a conservative stop signal, not proof of release or stopped effects.
 
 These tests validate mechanisms used by the runbooks; they do not prove a human
-incident response, safe snapshot restore or hosted recovery. Before production,
-rehearse hosted restart/alarm and rotation behavior, establish alerting/incident
-ownership, and review the containment procedure for each protected resource.
+incident response or safe snapshot restore. Hosted restart/alarm and rotation
+scenarios now have specific evidence; see the [lifecycle results](staging-lifecycle-results.md)
+and [resilience/capacity follow-up](staging-capacity-results.md). Before production,
+establish alerting/incident ownership, rehearse compatible software rollback and
+review the containment procedure for each protected resource.
 Unsupported restoration/migration stays prohibited until a separate design and
-its tests are accepted. No deployment, data reset or migration was performed here.
+its tests are accepted. No production deployment, data reset or migration is
+authorized by this policy.

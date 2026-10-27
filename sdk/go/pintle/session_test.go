@@ -51,11 +51,11 @@ func TestSessionConcurrentAllocationAndReleaseReservation(t *testing.T) {
 	if _, err := s.NewAcquire("worker", time.Second); err == nil {
 		t.Fatal("acquisition consumed reserved Release position")
 	}
-	r, err := s.NewRelease(Lease{Resource: s.resource})
+	r, err := s.NewRelease(sampleLease())
 	if err != nil || r.Attempt.Sequence != 32 || r.Attempt.AcknowledgedThrough != 0 {
 		t.Fatalf("reserved release unavailable or implicit ACK: %v", err)
 	}
-	if _, err := s.NewRelease(Lease{Resource: s.resource}); err == nil {
+	if _, err := s.NewRelease(sampleLease()); err == nil {
 		t.Fatal("window exceeded")
 	}
 }

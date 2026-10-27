@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pintle-staging",
+  "main": "crates/cloudflare/build/worker/shim.mjs",
+  "compatibility_date": "2026-10-24",
+  "workers_dev": true,
+  "preview_urls": false,
+  "build": {
+    "command": "./bin/just build"
+  },
+  "vars": {
+    "P2_ENABLED": "true",
+    "PINTLE_AUTH_MODE": "static",
+    "PINTLE_METRICS": "true"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AUTHORITIES",
+        "class_name": "PintleAuthority"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "p0-sqlite-v1",
+      "new_sqlite_classes": [
+        "PintleAuthority"
+      ]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

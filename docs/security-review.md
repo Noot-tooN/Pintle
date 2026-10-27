@@ -8,6 +8,11 @@
 Reviewed 2026-10-26 as part of implementation. This is a self-review with executed
 regression/advisory tests, not an independent security audit or production signoff.
 
+Latest follow-up: [separate P3 security review and remediation](security-pass-results.md)
+records a frozen pre-fix review, the Client-value credential-redaction finding,
+deterministic regression and expanded P2 principal-boundary checks. Earlier dated
+results below remain historical; independent external review is still open.
+
 ## Separate local review, 2026-10-27
 
 Reviewed the implementation at `6a95342a0b2504c061eff39ac94b86b3b77eccdf` after
@@ -81,6 +86,8 @@ the sandbox (`~/.opengrep/semgrep.log`), even with a temporary data-directory
 override. It produced no scan evidence; no permissions were widened or tool
 installed. No online advisory database refresh or hosted checks were performed.
 The earlier dated advisory results below are not a fresh vulnerability verdict.
+The later [Opengrep follow-up](security-pass-results.md#opengrep-follow-up-project-local-state-and-completed-scan)
+resolved the log path with project-local state and completed the bounded Go scan.
 
 ## Boundaries and controls
 
@@ -127,21 +134,38 @@ this package-advisory coverage.
 
 The [recovery policy and runbooks](recovery-policy.md) now document incident
 containment, same-attempt reconciliation and prohibited restoration/migration.
-They are operational requirements; hosted rehearsal and external review remain open.
+They are operational requirements. Bounded [hosted lifecycle](staging-lifecycle-results.md)
+and [resilience](staging-capacity-results.md) rehearsals now supplement the dated
+local review. Independent review remains an OSS gate; production incident readiness
+is a separate operator responsibility. See the [release checklist](release-checklist.md).
 
-- No tenant-wide rate limits, resource-count quotas or abuse/cost controls. Bounded
-  per-resource queues do not stop creation of unlimited resource names.
-- Static secret distribution, rotation propagation, operator access and emergency
-  response need hosted validation. No OIDC/JWT provisioning or immediate lease/
-  pending-intent revocation protocol is implemented.
+### OSS security obligations and guarantee limits
+
+- Preserve authenticated tenant/namespace/resource isolation, principal/ownership
+  checks, fail-closed auth and all existing bounded state/request controls. Deferring
+  SaaS policy does not weaken these protections.
+- Before OSS release, obtain independent review and resolve findings, assign a
+  private vulnerability-reporting channel and a maintainer responsible for triage,
+  and obtain explicit release approval. No unverified contact address is published
+  here. Existing Apache-2.0 is unchanged.
 - Alarm delay, clock jumps, authority replacement and restore can affect availability
   or invalidate assumptions. No safe snapshot rollback/handoff protocol is claimed.
 - Local transaction tests do not prove arbitrary Cloudflare partitions/failover.
 - External systems must enforce fencing. Lost, Release, TTL and request idempotency
   cannot make arbitrary external operations exactly once or stop paused clients.
-- Metrics exporter, retention/access controls and service alerts require deployment
-  configuration. Test state contains local-only capabilities; keep test-results
+
+### Deployment responsibilities and deferred SaaS controls
+
+- No tenant-wide rate limits, resource-count quotas or abuse/cost controls. Bounded
+  per-resource queues do not stop creation of unlimited resource names. These
+  controls are deferred to future hosting/SaaS work, not blockers for OSS release;
+  operators must restrict access/admission appropriately for their deployment.
+- Static rotation passed from one hosted client location; global propagation,
+  operator access and emergency response remain unverified. No OIDC/JWT provisioning or immediate lease/
+  pending-intent revocation protocol is implemented.
+- Scoped persisted staging logs are configured and queried; production retention,
+  access policy, metrics export, service alerts and incident ownership belong to
+  the deployment operator. The OSS project documents signals and runbooks.
+  Test state contains
+  local and staging capabilities; keep test-results
   and temporary secrets ignored. The suite removes temporary `.dev.vars` files.
-- Before public release, assign a private vulnerability-reporting channel and an
-  incident owner; obtain independent review and explicit release approval. No
-  unverified contact address is published here. Existing Apache-2.0 is unchanged.

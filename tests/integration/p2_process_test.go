@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	pintle "pintle.local/spike/sdk/go/pintle"
+	pintle "github.com/Noot-tooN/Pintle/sdk/go/pintle"
 	"strings"
 	"testing"
 	"time"

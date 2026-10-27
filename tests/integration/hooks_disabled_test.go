@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	v1 "pintle.local/spike/gen/go/pintle/v1/pintlev1connect"
+	v1 "github.com/Noot-tooN/Pintle/gen/go/pintle/v1/pintlev1connect"
 )
 
 // This runs against the normal Wasm before the instrumented build. An accidental

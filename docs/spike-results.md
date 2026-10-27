@@ -274,4 +274,6 @@ nonblocking mutex lifecycle. Do not infer a production lock guarantee from P0.
 
 [P3 local hardening](p3-results.md) extends deterministic tests, SDK lease maintenance,
 credential policy, transport validation, metrics and local performance evidence.
-Hosted staging and public release gates remain open; no deployment was performed.
+That local P3 run performed no deployment. Subsequent [hosted lifecycle](staging-lifecycle-results.md)
+and [bounded resilience/capacity](staging-capacity-results.md) checks passed on
+isolated staging. Production release gates remain open.

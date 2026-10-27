@@ -1,7 +1,13 @@
 # Pintle — Canonical Project Specification
 
 **Version:** Planning baseline v1 — 2026-10-24  
-**Stage:** pre-implementation; architecture agreed, correctness and feasibility claims not yet proven.  
+**Baseline stage:** pre-implementation on 2026-10-24. Current implementation status
+is [P3 hardening and bounded hosted validation](docs/IMPLEMENTATION_PLAN.md#p3--harden-v01-and-prepare-public-oss),
+with OSS release gates open as of 2026-10-27, separately from production deployment
+and future SaaS requirements. See the [release checklist](docs/release-checklist.md).
+The hypotheses below preserve
+the planning baseline; consult the linked ADRs/results before treating them as
+still untested or as verified guarantees.
 **Project name:** **Pintle** (`pintle` repository).  
 **Intended audience:** engineer or coding agent implementing the first production-oriented, open-source vertical slice.
 
@@ -19,6 +25,23 @@
 - Competitors/reference points: etcd concurrency, Redisson, Dapr, FoundationDB, Upstash, Inngest/Trigger.dev, FenceKit, ubgo/lock. Existing products have overlapping primitives. We differentiate with one shared authoritative engine, multilingual SDKs, higher-level helpers, optional managed deployment, correctness conformance and resource-safe integrations.
 
 ## B. Accepted architectural decisions
+
+### B0. OSS and hosting responsibility boundary — ACCEPTED, 2026-10-27
+
+P3 prepares the open-source core, deployable server and Go SDK for release.
+Tenant-wide request/concurrency quotas, resource-count allowances, customer plans,
+billing and abuse policy are deferred to a future hosting/SaaS control plane.
+They are not prerequisites for OSS release and must not enter the portable core.
+
+Keep authenticated tenant/namespace/resource isolation and principal authorization:
+these protect self-hosted applications too. Keep all existing request, session,
+receipt, waiter and subscription bounds; this decision changes no runtime behavior.
+The core owns coordination correctness, while server/gateway adapters provide
+authentication, routing, validation and telemetry. Operators configure deployment
+access, workload protection, alerts and incident response. The OSS project supplies
+secure defaults, useful signals, recovery guidance and documented operating limits.
+The [release checklist](docs/release-checklist.md) separates those responsibilities;
+[ADR-018](docs/adr/ADR-018-oss-release-and-saas-boundaries.md) records the decision.
 
 ### B1. Server-authoritative model — ACCEPTED
 
