@@ -125,8 +125,9 @@ func validateOwnership(l Lease) error {
 }
 
 type Client struct {
-	rpc        pintlev1connect.LockServiceClient
-	credential string
+	rpc           pintlev1connect.LockServiceClient
+	credential    string
+	leaseSessions *leaseSessionCache
 }
 
 // Value receivers also redact Client values copied into debug containers.
@@ -152,7 +153,7 @@ func New(endpoint, credential string, httpClient connect.HTTPClient) (*Client, e
 	if httpClient == nil {
 		httpClient = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	}
-	return &Client{pintlev1connect.NewLockServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), credential}, nil
+	return &Client{rpc: pintlev1connect.NewLockServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), credential: credential, leaseSessions: &leaseSessionCache{}}, nil
 }
 func resource(r Resource) *v1.ResourceId { return &v1.ResourceId{Namespace: r.Namespace, Key: r.Key} }
 func ttl(d time.Duration) (uint32, error) {

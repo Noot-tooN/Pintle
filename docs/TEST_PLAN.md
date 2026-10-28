@@ -206,3 +206,22 @@ release or cancel the owner's intent. A forged subject header on the owner's
 actual acquisition envelope is rejected, the direct internal route is absent,
 and the real owner can still reconcile, Release and ACK. Ordering is explicit;
 deadlines are watchdogs. See [security evidence](security-pass-results.md).
+
+### Bounded upstream test comparison
+
+The [upstream coverage map](upstream-test-review.md) pins selected etcd, Redisson,
+LogCabin, ubgo/lock and FenceKit tests and distinguishes existing coverage from
+new assertions and deferred features. New tests cover an expired FIFO-head session
+with a live successor and fresh maintenance after old-generation renewal failure,
+including late replies and stale recovery. Native/SDK tests use logical time and
+channels; `TestP2ExpiredQueueHead` and `TestP2MaintenanceSuccessorRecovery` use the
+existing compiled-Wasm controller and run in the default hardening suite.
+
+### Managed Go callbacks
+
+[WithLease results](with-lease-results.md) records injected renewal ticks/time,
+callback cancellation/completion schedules, uncertain cleanup identities, bounded
+session reuse and exact tokens. Normal local Wrangler verifies committed-response
+loss and both new executable examples; instrumented Wrangler orders concurrent
+callback handoff/cancellation at durable wait registration. These run in the
+existing Hermit/Just full suite with the Go race detector.

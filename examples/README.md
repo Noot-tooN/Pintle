@@ -17,6 +17,8 @@ hosted request or external side effect is involved.
 | --- | --- |
 | `lifecycle` | Open session, TryAcquire, inspect Current, Renew, explicit Release, then ACK |
 | `cancel` | Cancelled caller context; CancelPending before admission prevents delayed execution; committed grant wins later cancellation and must be released |
+| `with-lease` | WithLease automatically acquires, renews and releases while caching an immutable document checksum; harmless duplicate work needs no destination fencing |
+| `with-fencing` | WithLease passes its exact token to an in-memory inventory store; a delayed older stock update is rejected after a newer one |
 | `recover` | Maintain/Lost after deliberately discarding a real committed Renew reply; same-attempt status/replay, ACK, Stop and explicit Release |
 
 These are ordered scenarios. No sleep chooses a concurrency winner; the server
@@ -31,6 +33,8 @@ mutate, set `PINTLE_ENDPOINT`, `PINTLE_TOKEN` and optionally `PINTLE_NAMESPACE`
 ./bin/just example lifecycle
 ./bin/just example cancel
 ./bin/just example recover
+./bin/just example with-lease
+./bin/just example with-fencing
 ```
 
 Supply the credential through your shell's private input mechanism or secret
@@ -41,8 +45,11 @@ results. Sessions expire normally; fencing metadata remains. Unexpected failure
 stops the example; it does not guarantee cleanup or persist a recovery journal.
 Repeated runs create more resource histories, so this is not a load generator.
 
-The command intentionally performs no protected business write. Printing a fence
-is not fencing enforcement: a real database/service must atomically reject stale
-tokens. Do not infer ownership from client wall time, an old receipt or an open
+The inventory destination is an in-memory demonstration, with atomic token
+comparison and data update under one mutex. It is not a persistent database
+integration. Its high-water mark is per product, compares uint64 exactly and
+permits equal-token writes by one owner; it does not deduplicate business effects.
+A real database/service must enforce the same check atomically with each write.
+Do not infer ownership from client wall time, an old receipt or an open
 Lost channel. See the [SDK guide](../sdk/go/pintle/README.md) for errors, deadlines,
 crash recovery requirements and the exact scope of these examples.

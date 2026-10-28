@@ -25,7 +25,7 @@ func TestSDKExamples(t *testing.T) {
 	if b, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build example: %v\n%s", err, b)
 	}
-	for _, mode := range []string{"lifecycle", "cancel", "recover"} {
+	for _, mode := range []string{"lifecycle", "cancel", "recover", "with-lease", "with-fencing"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 			defer cancel()

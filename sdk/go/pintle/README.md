@@ -9,8 +9,8 @@ are for building/testing the server or regenerating checked-in protocol sources.
 ## Installation and compatibility
 
 The SDK is **unpublished and not yet stable**. The old `pintle.local/spike` import
-path was a development placeholder; the current change has not been pushed or
-tagged. For an external application using this checkout:
+path was a development placeholder. No versioned SDK release has been published.
+For an external application using this checkout:
 
 ```sh
 # In an existing Go module, using Go from an activated Pintle Hermit environment:
@@ -42,7 +42,7 @@ they do not certify Go source compatibility or storage migration. See
 
 Run `./bin/just example-local` from the repository: it builds normal Wasm, starts
 local Wrangler with an ephemeral private credential, then builds and executes
-all three [example modes](../../../examples/README.md). No Cloudflare account,
+all five [example modes](../../../examples/README.md). No Cloudflare account,
 deployment or hosted traffic is involved.
 
 The current service uses this sequence:
@@ -66,6 +66,79 @@ use Session constructors and `GetAttemptStatus`/`Session.Status` with the curren
 P2 service. Request fields are exported for serialization, not permission to mutate
 an already prepared retry identity. Client/Session methods are concurrency-safe;
 applications must coordinate ACKs across concurrently issued sequences.
+
+## Managed callbacks: WithLease
+
+For ordinary scoped work, let the SDK manage acquisition, renewal and cleanup:
+
+```go
+err := client.WithLease(ctx,
+    pintle.Resource{Namespace: "shop", Key: "inventory:blue-shirt"},
+    pintle.LeaseOptions{TTL: 30 * time.Second},
+    func(workCtx context.Context, lease pintle.Lease) error {
+        return inventory.SaveStockFenced(workCtx, productID, stock, lease.FencingToken)
+    },
+)
+```
+
+`inventory.SaveStockFenced` above is an application method, not a Pintle SDK method:
+it must atomically validate the token and update data in the existing destination.
+No second database is required by Pintle. For harmless duplicate work such as
+caching a checksum of immutable content, ignore the lease argument (`_ pintle.Lease`)
+and call the ordinary destination API. See runnable `with-lease` and `with-fencing`
+[examples](../../../examples/README.md).
+
+Defaults: TTL 30s, WaitTimeout 60s, CleanupTimeout 5s, HolderRef `with-lease`.
+WaitTimeout bounds session allocation/acquisition locally and the server waiting
+intent (1–60000 whole ms). TTL remains 100–60000 whole ms; cleanup must be positive
+and at most 60s. Use a parent deadline to bound cooperative work overall.
+
+The helper waits for initial Renew/ACK before invoking your callback at most once.
+It renews automatically with the existing TTL/3 budgets and cancels `workCtx` on
+parent cancellation or lease uncertainty; `context.Cause(workCtx)` includes
+`ErrLeaseUncertain` for detected maintenance failure. It never retries callbacks
+or reacquires on loss. The lease is a snapshot: its token is stable through renewal,
+its expiry is informational and is not updated in your callback's value.
+Let the helper own Renew/Release; do not manually change its lease lifecycle.
+
+Pass `workCtx` to cooperative operations and join your child goroutines before
+returning. WithLease waits for your callback to return, even after cancellation;
+an uncooperative callback can block forever. On return it cancels work, stops and
+joins maintenance, and attempts Release/ACK with one fresh bounded cleanup context.
+Panics propagate after attempted cleanup. Cancellation cannot recall external
+writes; destination fencing remains necessary when stale effects are unsafe.
+
+One private session handles the whole lifecycle. Reuse the Client: it caches at
+most 16 fully settled idle sessions, exclusively borrowed by invocations. Cached
+sessions are refreshed before reuse and replaced only after confirmed expiry.
+Uncertain/evicted sessions expire normally. High resource churn, simultaneous
+callers or fresh Clients can still hit server limits. Tokens/leases are never reused.
+
+### WithLease errors and recovery
+
+Use `errors.Is` for callback/context errors, `ErrWaitExpired`, `ErrWaitCancelled`
+and `ErrLeaseUncertain`. Callback and cleanup errors may be joined. A nil callback
+result does not make uncertain renewal/cleanup succeed. With `errors.As`, inspect
+`*pintle.WithLeaseError` for `Wait`, `Renew` and `Release` prepared requests and the
+last observed `Lease`. These fields are recovery data, never proof of current
+ownership. Keep them private and unchanged; do not blindly rerun business work.
+
+- `Wait`: cancellation or final ACK was uncertain. Reconcile/CancelPending using
+  the same intent; if grant won and remains active, explicitly release it.
+- `Renew`: a renewal or its ACK was uncertain, including renewal interrupted by
+  normal callback completion. Inspect/replay that exact attempt; its receipt may
+  already be acknowledged. Do not treat missing history as proof of rollback.
+- `Release`: release or its final ACK was uncertain, or its known result is kept
+  because an earlier renewal remains unresolved. Replay/status using the exact
+  request, and ACK only after consuming the entire contiguous prefix.
+
+Even when cleanup reconciles a lost Acquire reply, the helper returns the original
+error and does not invoke work. A failed Release does not ACK or recycle the session.
+Normal formatting redacts recovery fields, but serialization exposes capabilities.
+A callback panic propagates; cleanup errors cannot be returned during that panic.
+The helper keeps recovery in memory only. Use explicit Session APIs with a private
+pre-send journal when crash recovery of requests is required. It does not make
+external business effects exactly-once.
 
 ## Operations and results
 

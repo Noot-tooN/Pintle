@@ -1,7 +1,9 @@
 // Package pintle provides server-owned distributed mutex operations over binary
 // unary Connect. It does not arbitrate contention in the client.
 //
-// Create a Client with New, then OpenSession for one Resource. Prepare operations
+// Create a Client with New. WithLease manages scoped callback acquisition, renewal,
+// cooperative cancellation and bounded cleanup; fencing remains destination-enforced.
+// For explicit recovery/persistence, OpenSession for one Resource. Prepare operations
 // with Session.NewAcquire, NewWaitAcquire, NewRenew or NewRelease. Retain each
 // request unchanged across retries, including its Attempt. Package-level request
 // constructors omit sessions and are for the earlier focused protocol modes, not

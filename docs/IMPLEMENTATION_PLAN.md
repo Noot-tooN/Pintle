@@ -1,6 +1,6 @@
 # Implementation Plan — ordered, acceptance-driven
 
-**Important:** `PROJECT_SPEC.md` is canonical. This plan is an implementation sequence, not a date-based promise. Only start the *next* milestone after evidence for the previous gate is recorded.
+**Important:** `PROJECT_SPEC.md` is canonical. This plan is an implementation sequence, not a date-based promise. Record correctness evidence before extending each milestone. Development progression is separate from formal publication; the maintainer deferred publication and external security review on 2026-10-28.
 
 ## P0 — Prove Rust + DO SQLite transaction semantics (first PR)
 
@@ -74,9 +74,10 @@ The [bounded resilience/capacity pass](staging-capacity-results.md) extends this
 with disconnect/recovery, maintenance response faults and small-load measurements.
 The [API/Go SDK usability and packaging review](sdk-review-results.md) now supplies
 canonical imports, runnable examples, preparation validation and consumer evidence.
-**OSS release gate remains OPEN:** independent security review,
-vulnerability-report triage, final documentation and
-release-candidate validation, and maintainer release approval. Use the canonical
+**Formal publication is deferred.** External security review is also deferred by
+the maintainer; neither blocks further development. Before an eventual publication,
+revisit vulnerability-report triage, documentation, candidate validation and approval.
+Use the canonical
 [release checklist](release-checklist.md). Production deployment and future SaaS
 launch have separate operator/service requirements; neither is approved here.
 
@@ -94,9 +95,11 @@ tests. It leaves the independent-review and vulnerability-triage gates open.
 - Conformance/fault-injection suite, live Cloudflare staging checks with approval, p50/p95/p99 local and WAN measurements, hot-key behavior, operational limits, deployment documentation, basic metrics, security review, license approval.
 - Open-source release must explicitly state limitations and unsupported resource-fencing semantics.
 
-Next P3 work: obtain independent security review and configure vulnerability
-triage, finish the cross-document release contract review, then run final candidate
-checks and seek release approval. Public module fetch remains unverified until
+Current development increment: managed Go `WithLease` callbacks with automatic
+renewal, cooperative cancellation, optional destination fencing and deterministic
+tests. See [results](with-lease-results.md) and [ADR-020](adr/ADR-020-with-lease-callback.md).
+Future publication preparation remains separate in the release checklist.
+Public module fetch remains unverified until
 publication is separately authorized. Existing hosted measurements
 support only their documented scenarios; broader cost/load studies are needed
 for new operating claims, not as a substitute for these OSS checks.
@@ -113,8 +116,11 @@ See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
 - Validate *true* portability using a native Rust + FDB/etcd backend; do not build a large generic backend framework for hypothetical capabilities.
 
 The P4 rate-limit/quota primitives are coordination features for applications,
-distinct from enforcing SaaS customer plans. P4 follows the P3 OSS release gate;
-it does not depend on building the future SaaS control plane.
+distinct from enforcing SaaS customer plans. P4 development may proceed on the
+recorded P3 evidence without publishing a release or commissioning an external
+security review. It does not depend on a SaaS control plane. PostgreSQL fencing
+would be an optional integration with an application's existing database, never
+a second coordination store or a requirement for using Pintle.
 
 ## Decisions needing targeted ADR or experiment
 

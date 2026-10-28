@@ -149,6 +149,160 @@ fn fifo_release_cancel_and_no_barging() {
     assert_eq!(s.rows["fence"], "1");
 }
 #[test]
+fn session_expiry_skips_only_the_ineligible_queue_head() {
+    // Keep an old result without ACKing it. Heartbeats extend idle expiry but
+    // cannot extend the result's recovery limit at 601000. Both wait deadlines
+    // remain in the future, so deadline cleanup cannot mask a session bug.
+    for now in [600_999, 601_000, 601_001] {
+        for alarm in [false, true] {
+            let mut s = setup();
+            for at in [250_000, 500_000] {
+                assert!(matches!(
+                    atomic(&mut s, |t| session::ack(t, "alice", "1", 0, at)).unwrap(),
+                    Output::Session(_)
+                ));
+            }
+            for id in ["2", "3"] {
+                let Output::Session(info) =
+                    atomic(&mut s, |t| session::open(t, "alice", 600_000)).unwrap()
+                else {
+                    panic!("session not opened")
+                };
+                assert_eq!(info.id, id);
+            }
+            let owner_frame = Frame {
+                session_id: "2".into(),
+                ..frame(1)
+            };
+            let owner = Command::Acquire {
+                id: "live-owner".into(),
+                holder: "owner".into(),
+                ttl_ms: if alarm { now - 600_000 } else { 60_000 },
+            };
+            assert!(matches!(
+                atomic(&mut s, |t| session::execute(
+                    t,
+                    "alice",
+                    &owner_frame,
+                    &owner,
+                    600_000,
+                    &token(2)
+                ))
+                .unwrap(),
+                Output::Operation(Reply::Applied { .. })
+            ));
+            let frames = [
+                frame(2),
+                Frame {
+                    session_id: "3".into(),
+                    ..frame(1)
+                },
+            ];
+            for (i, f) in frames.iter().enumerate() {
+                let command = cmd(&format!("queued-{i}"));
+                assert_eq!(
+                    state(
+                        atomic(&mut s, |t| waiting::apply(
+                            t,
+                            "alice",
+                            waiting::Action::Acquire {
+                                frame: f,
+                                command: &command,
+                                duration: 60_000,
+                                cancel: false,
+                            },
+                            600_000,
+                            &token(3)
+                        ))
+                        .unwrap()
+                    ),
+                    "pending"
+                );
+            }
+            if alarm {
+                drive(&mut s, now);
+            } else {
+                let release_frame = Frame {
+                    sequence: 2,
+                    ..owner_frame
+                };
+                let release = Command::Release {
+                    id: "release-live".into(),
+                    token: token(2),
+                };
+                assert!(matches!(
+                    atomic(&mut s, |t| waiting::apply(
+                        t,
+                        "alice",
+                        waiting::Action::Execute {
+                            frame: &release_frame,
+                            command: &release
+                        },
+                        now,
+                        &token(3)
+                    ))
+                    .unwrap(),
+                    Output::Operation(Reply::Applied { .. })
+                ));
+            }
+            assert_eq!(
+                s.rows["fence"], "3",
+                "expired waiter must not consume a fence"
+            );
+            for (i, f) in frames.iter().enumerate() {
+                let result = atomic(&mut s, |t| {
+                    session::execute(
+                        t,
+                        "alice",
+                        f,
+                        &Command::Status {
+                            id: format!("queued-{i}"),
+                        },
+                        now,
+                        "",
+                    )
+                })
+                .unwrap();
+                if i == 0 && now >= 601_000 {
+                    assert!(matches!(
+                        result,
+                        Output::Rejected(Rejection::SessionExpired)
+                    ));
+                    // A delayed retry cannot recreate the removed queue entry.
+                    assert!(matches!(
+                        atomic(&mut s, |t| waiting::apply(
+                            t,
+                            "alice",
+                            waiting::Action::Acquire {
+                                frame: f,
+                                command: &cmd("queued-0"),
+                                duration: 60_000,
+                                cancel: false,
+                            },
+                            now,
+                            &token(4)
+                        ))
+                        .unwrap(),
+                        Output::Rejected(Rejection::SessionExpired)
+                    ));
+                } else if (i == 0) == (now < 601_000) {
+                    let Output::Operation(Reply::Applied { receipt, .. }) = result else {
+                        panic!("eligible waiter not granted")
+                    };
+                    let Mutation::Acquired(lease) = receipt.mutation else {
+                        panic!("wrong receipt")
+                    };
+                    assert_eq!(lease.fence, "3");
+                } else {
+                    assert_eq!(state(result), "pending");
+                }
+            }
+            assert_eq!(s.rows["fence"], "3");
+        }
+    }
+}
+
+#[test]
 fn exact_deadlines_sessions_conflicts_and_quota() {
     for now in [1199, 1200, 1201] {
         let mut s = setup();

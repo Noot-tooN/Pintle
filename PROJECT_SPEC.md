@@ -3,8 +3,9 @@
 **Version:** Planning baseline v1 — 2026-10-24  
 **Baseline stage:** pre-implementation on 2026-10-24. Current implementation status
 is [P3 hardening and bounded hosted validation](docs/IMPLEMENTATION_PLAN.md#p3--harden-v01-and-prepare-public-oss),
-with OSS release gates open as of 2026-10-27, separately from production deployment
-and future SaaS requirements. See the [release checklist](docs/release-checklist.md).
+with formal publication and external security review deferred by the maintainer
+on 2026-10-28. Continued development does not require either; production deployment
+and future SaaS requirements remain separate. See the [release checklist](docs/release-checklist.md).
 The hypotheses below preserve
 the planning baseline; consult the linked ADRs/results before treating them as
 still untested or as verified guarantees.

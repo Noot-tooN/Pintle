@@ -21,6 +21,7 @@ type Maintenance struct {
 	pending    *RenewRequest
 	err        error
 	lost, done chan struct{}
+	ready      chan struct{} // first renewal and ACK completed; not an ownership oracle
 	cancel     context.CancelFunc
 }
 
@@ -101,14 +102,14 @@ func (c *Client) Maintain(ctx context.Context, l Lease, d time.Duration) (*Maint
 }
 func startMaintenance(parent context.Context, l Lease, d time.Duration, ops renewalOps, wait func(context.Context, time.Duration) error, now func() time.Time) *Maintenance {
 	ctx, cancel := context.WithCancel(parent)
-	m := &Maintenance{latest: l, lost: make(chan struct{}), done: make(chan struct{}), cancel: cancel}
+	m := &Maintenance{latest: l, lost: make(chan struct{}), done: make(chan struct{}), ready: make(chan struct{}), cancel: cancel}
 	go func() {
 		defer close(m.done)
 		defer cancel()
 		err := m.run(ctx, d, ops, wait, now)
 		if parent.Err() != nil {
 			err = parent.Err()
-		} else if ctx.Err() != nil {
+		} else if ctx.Err() != nil && errors.Is(err, context.Canceled) {
 			err = ErrMaintenanceStopped
 		}
 		m.mu.Lock()
@@ -120,6 +121,7 @@ func startMaintenance(parent context.Context, l Lease, d time.Duration, ops rene
 }
 func (m *Maintenance) run(ctx context.Context, d time.Duration, ops renewalOps, wait func(context.Context, time.Duration) error, now func() time.Time) error {
 	budget := d / 3
+	first := true
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -156,6 +158,10 @@ func (m *Maintenance) run(ctx context.Context, d time.Duration, ops renewalOps, 
 		m.mu.Lock()
 		m.pending = nil
 		m.mu.Unlock()
+		if first {
+			close(m.ready)
+			first = false
+		}
 		if err = wait(ctx, budget); err != nil {
 			return err
 		}

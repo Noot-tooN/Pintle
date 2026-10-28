@@ -208,3 +208,59 @@ func TestMaintenanceStopResponseOrders(t *testing.T) {
 		})
 	}
 }
+
+func TestMaintenanceGenerationsAreIsolated(t *testing.T) {
+	oldOps, freshOps := fakeOps(), fakeOps()
+	var oldElapsed atomic.Int64
+	oldLease := sampleLease()
+	old := startMaintenance(context.Background(), oldLease, time.Minute, oldOps, oldOps.wait,
+		func() time.Time { return time.Unix(0, oldElapsed.Load()) })
+	defer old.Stop()
+	oldRequest := receive(t, oldOps.requests)
+
+	// Model the successor lease independently. The real server handoff is
+	// exercised by TestP2MaintenanceSuccessorRecovery in the Wasm suite.
+	freshLease := oldLease
+	freshLease.LeaseID = strings.Repeat("b", 64)
+	freshLease.FencingToken = "2"
+	freshLease.AcquisitionID = "successor"
+	fresh := startMaintenance(context.Background(), freshLease, time.Minute, freshOps, freshOps.wait,
+		func() time.Time { return time.Unix(0, 0) })
+	defer fresh.Stop()
+	request := receive(t, freshOps.requests)
+	if request.Lease != freshLease {
+		t.Fatal("fresh maintenance used old ownership")
+	}
+	freshOps.replies <- renewalReply{g: success(freshLease)}
+	receive(t, freshOps.waiting) // ACK consumed and the next renewal is blocked on a test tick.
+
+	// Deliver an old successful reply only after its local budget has elapsed
+	// and the successor is already renewing. It must not revive the old helper.
+	oldElapsed.Store(int64(20 * time.Second))
+	oldOps.replies <- renewalReply{g: success(oldLease)}
+	receive(t, old.Done())
+	receive(t, old.Lost())
+	if !errors.Is(old.Err(), ErrLeaseUncertain) || old.Latest() != oldLease || oldOps.acks != 0 {
+		t.Fatal("late old reply was accepted or acknowledged")
+	}
+	if r := old.Recovery(); r == nil || r.RequestID != oldRequest.RequestID || *r.Attempt != *oldRequest.Attempt {
+		t.Fatal("old recovery identity lost")
+	}
+	old.Stop()
+	select {
+	case <-fresh.Lost():
+		t.Fatal("stopping old maintenance stopped its successor")
+	default:
+	}
+	freshOps.ticks <- struct{}{}
+	request = receive(t, freshOps.requests)
+	if request.Lease.LeaseID != freshLease.LeaseID || request.Attempt.Sequence != 2 || request.Attempt.AcknowledgedThrough != 1 {
+		t.Fatal("successor renewal state contaminated")
+	}
+	freshOps.replies <- renewalReply{g: success(freshLease)}
+	receive(t, freshOps.waiting)
+	if fresh.Latest().LeaseID != freshLease.LeaseID || fresh.Latest().FencingToken != "2" || fresh.Recovery() != nil {
+		t.Fatal("successor failed to consume its own renewal")
+	}
+	receive(t, old.Lost()) // permanently closed, even after successor progress
+}

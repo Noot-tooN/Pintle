@@ -1,6 +1,9 @@
 # Release checklist: OSS, deployment and future SaaS
 
-Status: 2026-10-27. **P3 OSS release remains open.** This checklist separates
+Status: 2026-10-28. **Formal release is deferred; development continues.**
+The maintainer has deferred external security review. Neither publication nor
+external assessment blocks P4 development. No release or deployment is approved.
+This checklist separates
 shipping the open-source core, server and Go SDK from operating a production
 deployment or launching a shared SaaS. Completing one does not approve the others.
 See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
@@ -14,7 +17,9 @@ change. Final validation must target the actual release candidate.
   transitions; no Cloudflare or commercial customer policy in the domain logic.
 - [x] Deterministic native and instrumented runtime coverage for expiry, races,
   idempotency, rollback, precision and restart; generated-client interoperability.
-  See [test plan](TEST_PLAN.md) and [latest full-suite evidence](security-pass-results.md).
+  See [test plan](TEST_PLAN.md) and [latest full-suite evidence](with-lease-results.md#validation).
+  The [bounded upstream comparison](upstream-test-review.md) adds queue-session
+  expiry and maintenance-generation regressions; it is not whole-project parity.
 - [x] Preserve authenticated tenant/namespace/resource isolation, owner/principal
   authorization, fail-closed credentials, request bounds and existing bounded
   sessions, receipt windows, waiters and subscriptions.
@@ -27,8 +32,10 @@ change. Final validation must target the actual release candidate.
   fencing responsibilities. Fix confirmed defects and add targeted regressions.
   See [SDK review results](sdk-review-results.md); consumer builds use a local
   replacement, not a published module proxy version.
-- [ ] Obtain independent security review, resolve findings, and configure a real
-  private vulnerability-reporting channel with a maintainer responsible for triage.
+- External security review: **deferred by the maintainer**, not a development
+  prerequisite. Retain the limits of the local security assessment.
+- [ ] Before eventual publication, configure a private vulnerability-reporting
+  channel with a maintainer responsible for triage.
   The [separate local review](security-pass-results.md) recorded findings before
   remediation and fixed the confirmed issue; the same-agent pass does not satisfy
   external independence or configure the reporting channel.
@@ -82,10 +89,10 @@ Future SaaS controls must preserve existing isolation and leave a safe path for
 Release and same-attempt recovery under load. Deferring them does not make the
 current server suitable for unrestricted public customer traffic.
 
-## Next P3 work
+## Future publication preparation (not current development blockers)
 
-1. Arrange independent security review and vulnerability-report triage. The
-   API/SDK review above is not an independent security assessment.
+1. Configure vulnerability-report triage when preparing to publish. External
+   security review remains deferred; the local review is not independent assessment.
 2. Finish the OSS documentation/guarantee review across the supported release
    surface; preserve the documented packaging and hosted evidence limits.
 3. Validate the release candidate and seek explicit OSS release approval. After
@@ -94,5 +101,6 @@ current server suitable for unrestricted public customer traffic.
 
 Further hosted measurement is optional, separately budgeted evidence unless needed
 to investigate a concrete issue or support a new claim. The incomplete telemetry
-result remains open and documented. P4 coordination helpers follow the P3 OSS
-gate, not completion of a future SaaS business or its control plane.
+result remains open and documented. P4 development can continue on the existing
+P3 evidence, independently of formal publication or future SaaS requirements.
+See [WithLease development results](with-lease-results.md) for the current SDK increment.
