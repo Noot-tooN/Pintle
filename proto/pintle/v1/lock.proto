@@ -17,6 +17,20 @@ service LockService {
   rpc AcknowledgeSession(AcknowledgeSessionRequest) returns (AcknowledgeSessionResponse);
 }
 
+// Unweighted permits; capacity is fixed by the first successful grant.
+// Shared envelopes preserve the same recovery and lease lifecycle contract.
+service SemaphoreService {
+  // Retry ambiguous outcomes with the SAME request_id, attempt, and payload. Never GET.
+  rpc Acquire(AcquireRequest) returns (AcquireResponse);
+  rpc CancelPending(CancelPendingRequest) returns (CancelPendingResponse);
+  rpc TryAcquire(TryAcquireRequest) returns (TryAcquireResponse);
+  rpc Renew(RenewRequest) returns (RenewResponse);
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  rpc GetRequestStatus(GetRequestStatusRequest) returns (GetRequestStatusResponse);
+  rpc OpenSession(OpenSessionRequest) returns (OpenSessionResponse);
+  rpc AcknowledgeSession(AcknowledgeSessionRequest) returns (AcknowledgeSessionResponse);
+}
+
 // ResourceId is scoped by authenticated tenant identity, never by a caller's DO ID.
 message ResourceId {
   string namespace = 1;
@@ -24,6 +38,8 @@ message ResourceId {
 }
 
 message TryAcquireRequest {
+  // Required (1..64) on SemaphoreService; must be zero on LockService.
+  uint32 semaphore_capacity = 6;
   ResourceId resource = 1;
   string request_id = 2;
   // A caller's attempt label, not a secret or ownership capability.
@@ -45,6 +61,9 @@ message TryAcquireResponse {
 
 // Immutable operation receipt. Consult observation for current lease validity.
 message GrantReceipt {
+  // Both zero for mutexes. Fencing on semaphores is scoped to resource + slot.
+  uint32 permit_slot = 8;
+  uint32 semaphore_capacity = 9;
   ResourceId resource = 1;
   // Original acquisition ID, including in a Renew receipt. Renew's own request
   // ID is its immutable label; P1.1 dedupe/status also requires session/sequence.

@@ -44,4 +44,25 @@ func TestSDKExamples(t *testing.T) {
 			t.Log(strings.TrimSpace(string(b)))
 		})
 	}
+	t.Run("semaphore", func(t *testing.T) {
+		binary := filepath.Join(t.TempDir(), "semaphore")
+		build := exec.Command(filepath.Join(root, "bin/go"), "build", "-race", "-o", binary, "./examples/semaphore")
+		build.Dir = root
+		if b, err := build.CombinedOutput(); err != nil {
+			t.Fatalf("build semaphore: %v\n%s", err, b)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, binary)
+		cmd.Env = append(os.Environ(), "PINTLE_ENDPOINT="+runtime.base, "PINTLE_TOKEN="+credential, "PINTLE_NAMESPACE=test")
+		b, err := cmd.CombinedOutput()
+		if strings.Contains(string(b), credential) {
+			t.Fatal("example leaked credential")
+		}
+		if err != nil || !strings.Contains(string(b), "PASS semaphore") {
+			t.Fatalf("semaphore example: %v\n%s", err, b)
+		}
+		t.Log(strings.TrimSpace(string(b)))
+	})
+
 }

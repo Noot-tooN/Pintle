@@ -2,7 +2,7 @@
 
 This is an **illustrative contract design**, not a ready-to-compile final `.proto`. Do not silently publish it as a stable `v1`; local Workers/Wasm transport integration is verified, but release gates remain open. The source of truth for behavior is `PROJECT_SPEC.md` + `docs/GUARANTEES.md`.
 
-**Implemented through P2:** the unpublished compiled schema is
+**Implemented mutex lifecycle through P2, extended by P4 semaphore:** the unpublished compiled schema is
 [`proto/pintle/v1/lock.proto`](../proto/pintle/v1/lock.proto). Generated Go Connect
 clients and the Go SDK interoperate with the Rust/Wasm Fetch adapter locally for
 TryAcquire, Renew, Release, and GetRequestStatus. See [p1-results.md](p1-results.md)
@@ -21,6 +21,22 @@ contains the immutable session acquisition plus wait_timeout_ms. CancelPending
 wraps that SAME request; AcquireResponse returns a retained grant or WaitState.
 Pending is a bounded HTTP response, not a new client-side contention attempt.
 Passing local integration and Buf compatibility does not freeze/publish v1.
+
+## P4 semaphore extension (implemented, unpublished)
+
+`SemaphoreService` exposes the same eight RPCs and shared messages as LockService.
+Its acquisition envelope requires `semaphore_capacity` in 1..64; LockService
+requires zero. Capacity becomes immutable on the first successful grant.
+Mismatches are `failed_precondition`; invalid bounds are `invalid_argument`.
+GrantReceipt includes `permit_slot` (1..capacity) and `semaphore_capacity`, both
+zero for mutexes. Renew/Release identify a permit by the existing secret capability.
+Recovery/status remains session-scoped within that primitive's authority.
+
+Fencing must be interpreted per resource **and slot**, not as one high-water mark
+rejecting other concurrently valid permits. Renew keeps slot/fence; slot reuse
+issues a new resource-wide exact decimal token. See [ADR-021](adr/ADR-021-unweighted-semaphore.md)
+for queue, storage and compatibility decisions. Shared RPC envelopes have a
+file-scoped Buf uniqueness exception; generated code and breaking checks remain.
 
 ## RPCs (server-side authoritative)
 

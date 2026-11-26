@@ -1,5 +1,6 @@
 //! Portable coordination primitives and transactional storage boundary.
 pub mod lease;
+pub mod semaphore;
 pub mod session;
 
 /// Provisional synchronous, single-authority transaction view. Implementations

@@ -157,15 +157,8 @@ pub fn open(tx: &mut impl Transaction, subject: &str, now: u64) -> Result<Output
         }
     }
     // Keep one session slot for the current authenticated owner's recovery.
-    if used >= MAX_SESSIONS - 1 {
-        let owner: Option<lease::Lease> =
-            serde_json::from_str(&tx.get("owner")?.unwrap_or_else(|| "null".into()))
-                .map_err(|e| e.to_string())?;
-        if !owner.is_some_and(|l| {
-            l.subject == subject && counter(&l.expires_at_ms).is_ok_and(|n| now < n)
-        }) {
-            return reject(Rejection::Exhausted);
-        }
+    if used >= MAX_SESSIONS - 1 && !crate::semaphore::has_owner(tx, subject, now)? {
+        return reject(Rejection::Exhausted);
     }
     let Some(slot) = free else {
         return reject(Rejection::Exhausted);

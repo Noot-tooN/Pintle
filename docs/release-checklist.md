@@ -103,4 +103,7 @@ Further hosted measurement is optional, separately budgeted evidence unless need
 to investigate a concrete issue or support a new claim. The incomplete telemetry
 result remains open and documented. P4 development can continue on the existing
 P3 evidence, independently of formal publication or future SaaS requirements.
-See [WithLease development results](with-lease-results.md) for the current SDK increment.
+See [WithLease development results](with-lease-results.md) and the
+[P4 semaphore increment](p4-semaphore-results.md). The latter extends the API and
+Rust state machine; its local tests do not extend P3 hosted evidence to semaphores.
+Any future publication scope must explicitly include or exclude this new primitive.

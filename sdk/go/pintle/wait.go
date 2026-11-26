@@ -43,7 +43,7 @@ func wireWait(r WaitRequest) (*v1.AcquireRequest, error) {
 		return nil, fmt.Errorf("session attempt and wait timeout 1..60000ms required")
 	}
 	a := r.Acquisition
-	return &v1.AcquireRequest{Acquisition: &v1.TryAcquireRequest{Resource: resource(a.Resource), RequestId: a.RequestID, HolderRef: a.HolderRef, LeaseTtlMs: ms, Attempt: wireAttempt(a.Attempt)}, WaitTimeoutMs: uint32(r.WaitTimeout / time.Millisecond)}, nil
+	return &v1.AcquireRequest{Acquisition: &v1.TryAcquireRequest{SemaphoreCapacity: a.Capacity, Resource: resource(a.Resource), RequestId: a.RequestID, HolderRef: a.HolderRef, LeaseTtlMs: ms, Attempt: wireAttempt(a.Attempt)}, WaitTimeoutMs: uint32(r.WaitTimeout / time.Millisecond)}, nil
 }
 func decodeWait(r *v1.AcquireResponse) (*WaitResult, error) {
 	if r == nil {
@@ -72,6 +72,9 @@ func decodeWait(r *v1.AcquireResponse) (*WaitResult, error) {
 // ResumeAcquire makes one bounded unary call for the same server-owned intent.
 // Pending is resumable; the server queue survives the response or disconnection.
 func (c *Client) ResumeAcquire(ctx context.Context, r WaitRequest) (*WaitResult, error) {
+	if r.Acquisition.Capacity != c.capacity {
+		return nil, fmt.Errorf("acquisition capacity does not match client")
+	}
 	w, err := wireWait(r)
 	if err != nil {
 		return nil, err
@@ -101,6 +104,9 @@ func (c *Client) Acquire(ctx context.Context, r WaitRequest) (*WaitResult, error
 // CancelPending atomically cancels even an intent whose Acquire has not arrived.
 // If grant won, returns that grant and does NOT release it. Reconcile ownership.
 func (c *Client) CancelPending(ctx context.Context, r WaitRequest) (*WaitResult, error) {
+	if r.Acquisition.Capacity != c.capacity {
+		return nil, fmt.Errorf("acquisition capacity does not match client")
+	}
 	w, err := wireWait(r)
 	if err != nil {
 		return nil, err
@@ -117,7 +123,7 @@ func matchedWait(response *v1.AcquireResponse, r WaitRequest) (*WaitResult, erro
 	if err == nil && result.Granted != nil {
 		receipt := result.Granted.Receipt
 		a := r.Acquisition
-		if receipt.Resource != a.Resource || receipt.AcquisitionID != a.RequestID || receipt.HolderRef != a.HolderRef {
+		if receipt.Capacity != a.Capacity || receipt.Resource != a.Resource || receipt.AcquisitionID != a.RequestID || receipt.HolderRef != a.HolderRef {
 			return nil, fmt.Errorf("response does not match acquisition")
 		}
 	}

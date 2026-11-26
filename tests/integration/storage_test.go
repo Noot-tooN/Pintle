@@ -71,6 +71,13 @@ db.exec('BEGIN IMMEDIATE');
 if (db.prepare("SELECT key FROM records WHERE key IN ('owner','fence','revision')").get()) throw Error('expected unused mutex');
 const insert = db.prepare('INSERT INTO records(key,value) VALUES (?,?)');
 insert.run('fence',process.argv[2]); insert.run('revision',process.argv[3]);
+const semaphore = db.prepare("SELECT value FROM records WHERE key='semaphore'").get();
+if (semaphore) {
+ if (semaphore.value !== '{"slots":[]}') throw Error('expected unused semaphore');
+ db.prepare("UPDATE records SET value=? WHERE key='semaphore'").run(JSON.stringify({slots:[{fence:process.argv[2],owner:null},{fence:'0',owner:null}]}));
+} else {
+ insert.run('owner','null'); // Released mutex with existing fencing history.
+}
 db.exec('COMMIT'); db.close();`
 	data, err := exec.Command(filepath.Join(h.root, "bin/node"), "--no-warnings", "--input-type=module", "-e", script, h.state, fence, revision).CombinedOutput()
 	if err != nil {

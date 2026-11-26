@@ -2,7 +2,8 @@
 
 **Version:** Planning baseline v1 — 2026-10-24  
 **Baseline stage:** pre-implementation on 2026-10-24. Current implementation status
-is [P3 hardening and bounded hosted validation](docs/IMPLEMENTATION_PLAN.md#p3--harden-v01-and-prepare-public-oss),
+is [P4 semaphore development](docs/p4-semaphore-results.md), built on P3 mutex
+hardening and bounded hosted validation,
 with formal publication and external security review deferred by the maintainer
 on 2026-10-28. Continued development does not require either; production deployment
 and future SaaS requirements remain separate. See the [release checklist](docs/release-checklist.md).

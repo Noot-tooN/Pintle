@@ -33,7 +33,7 @@ func TestMutexStorage(t *testing.T) {
 					for _, rows := range localRecords(t, h.root, h.state) {
 						assertSame(t, rows["fence"], decimal)
 						assertSame(t, rows["revision"], decimal)
-						assertSame(t, rows["owner"], "")
+						assertSame(t, rows["owner"], "null")
 					}
 					return
 				}
@@ -82,7 +82,7 @@ func TestMutexStorage(t *testing.T) {
 				for _, rows := range localRecords(t, h.root, h.state) {
 					assertSame(t, rows["fence"], pair[0])
 					assertSame(t, rows["revision"], pair[1])
-					assertSame(t, rows["owner"], "")
+					assertSame(t, rows["owner"], "null")
 				}
 			})
 		}

@@ -23,7 +23,10 @@ pub fn authority(instance: Option<&str>, operation: &str, result: &Result<Respon
     }
 }
 pub fn method(path: &str) -> &'static str {
-    match path.strip_prefix("/pintle.v1.LockService/") {
+    match path
+        .strip_prefix("/pintle.v1.LockService/")
+        .or_else(|| path.strip_prefix("/pintle.v1.SemaphoreService/"))
+    {
         Some("Acquire") => "Acquire",
         Some("CancelPending") => "CancelPending",
         Some("TryAcquire") => "TryAcquire",

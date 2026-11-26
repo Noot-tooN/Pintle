@@ -18,6 +18,8 @@ import (
 
 type Resource struct{ Namespace, Key string }
 type Lease struct {
+	// Zero for mutexes; semaphore fencing is scoped to Resource + PermitSlot.
+	PermitSlot, Capacity     uint32
 	Resource                 Resource
 	AcquisitionID, HolderRef string
 	// LeaseID is a secret ownership capability. Do not log or expose it.
@@ -61,6 +63,8 @@ type Status struct {
 	Released          *ReleaseResult
 }
 type AcquireRequest struct {
+	// Zero for mutexes. Set by a semaphore-bound Session.
+	Capacity             uint32
 	Attempt              *Attempt
 	Resource             Resource
 	RequestID, HolderRef string
@@ -99,6 +103,9 @@ func NewAcquire(resource Resource, holder string, ttl time.Duration) (AcquireReq
 // NewRenew prepares a low-level request without a recovery session. Use
 // Session.NewRenew for the current service.
 func NewRenew(lease Lease, ttl time.Duration) (RenewRequest, error) {
+	if err := validateRenewalFence(lease); err != nil {
+		return RenewRequest{}, err
+	}
 	if err := validateOwnership(lease); err != nil {
 		return RenewRequest{}, err
 	}
@@ -116,15 +123,31 @@ func NewRelease(lease Lease) (ReleaseRequest, error) {
 	return ReleaseRequest{Lease: lease, RequestID: id}, err
 }
 
+func validateRenewalFence(l Lease) error {
+	if _, err := decimal(l.FencingToken, true); err != nil {
+		return fmt.Errorf("renewal requires a canonical positive fencing token")
+	}
+	return nil
+}
+
+func (c *Client) checkRenewal(l Lease) error {
+	if err := validateRenewalFence(l); err != nil {
+		return err
+	}
+	return c.checkLease(l)
+}
+
 func validateOwnership(l Lease) error {
 	capability, err := hex.DecodeString(l.LeaseID)
-	if !validResource(l.Resource) || err != nil || len(capability) != 32 || hex.EncodeToString(capability) != l.LeaseID {
+	if !validPermit(l.PermitSlot, l.Capacity) || !validResource(l.Resource) || err != nil || len(capability) != 32 || hex.EncodeToString(capability) != l.LeaseID {
 		return fmt.Errorf("valid resource and canonical lease capability required")
 	}
 	return nil
 }
 
 type Client struct {
+	semaphoreRPC  pintlev1connect.SemaphoreServiceClient
+	capacity      uint32
 	rpc           pintlev1connect.LockServiceClient
 	credential    string
 	leaseSessions *leaseSessionCache
@@ -153,7 +176,7 @@ func New(endpoint, credential string, httpClient connect.HTTPClient) (*Client, e
 	if httpClient == nil {
 		httpClient = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	}
-	return &Client{rpc: pintlev1connect.NewLockServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), credential: credential, leaseSessions: &leaseSessionCache{}}, nil
+	return &Client{semaphoreRPC: pintlev1connect.NewSemaphoreServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), rpc: pintlev1connect.NewLockServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), credential: credential, leaseSessions: &leaseSessionCache{}}, nil
 }
 func resource(r Resource) *v1.ResourceId { return &v1.ResourceId{Namespace: r.Namespace, Key: r.Key} }
 func ttl(d time.Duration) (uint32, error) {
@@ -182,10 +205,10 @@ func decodeLease(l *v1.GrantReceipt) (*Lease, error) {
 		}
 	}
 	expires, _ := strconv.ParseUint(l.ExpiresAtUnixMs, 10, 64)
-	if expires > maxAuthorityTime || !validResource(Resource{l.Resource.Namespace, l.Resource.Key}) || !identifier(l.RequestId, 128) || !identifier(l.HolderRef, 64) {
+	if !validPermit(l.PermitSlot, l.SemaphoreCapacity) || expires > maxAuthorityTime || !validResource(Resource{l.Resource.Namespace, l.Resource.Key}) || !identifier(l.RequestId, 128) || !identifier(l.HolderRef, 64) {
 		return nil, fmt.Errorf("invalid lease identity/time")
 	}
-	return &Lease{Resource: Resource{l.Resource.Namespace, l.Resource.Key}, AcquisitionID: l.RequestId, HolderRef: l.HolderRef, LeaseID: l.LeaseId, FencingToken: l.FencingToken, Revision: l.Revision, ExpiresAtUnixMS: expires}, nil
+	return &Lease{PermitSlot: l.PermitSlot, Capacity: l.SemaphoreCapacity, Resource: Resource{l.Resource.Namespace, l.Resource.Key}, AcquisitionID: l.RequestId, HolderRef: l.HolderRef, LeaseID: l.LeaseId, FencingToken: l.FencingToken, Revision: l.Revision, ExpiresAtUnixMS: expires}, nil
 }
 func grant(l *v1.GrantReceipt, replayed bool, o *v1.LeaseObservation) (*GrantResult, error) {
 	receipt, err := decodeLease(l)
@@ -203,7 +226,7 @@ func grant(l *v1.GrantReceipt, replayed bool, o *v1.LeaseObservation) (*GrantRes
 		}
 		currentRevision, _ := decimal(current.Revision, true)
 		receiptRevision, _ := decimal(receipt.Revision, true)
-		if current.LeaseID != receipt.LeaseID || current.Resource != receipt.Resource || current.FencingToken != receipt.FencingToken || current.AcquisitionID != receipt.AcquisitionID || current.HolderRef != receipt.HolderRef || currentRevision < receiptRevision || current.ExpiresAtUnixMS < receipt.ExpiresAtUnixMS {
+		if current.PermitSlot != receipt.PermitSlot || current.Capacity != receipt.Capacity || current.LeaseID != receipt.LeaseID || current.Resource != receipt.Resource || current.FencingToken != receipt.FencingToken || current.AcquisitionID != receipt.AcquisitionID || current.HolderRef != receipt.HolderRef || currentRevision < receiptRevision || current.ExpiresAtUnixMS < receipt.ExpiresAtUnixMS {
 			return nil, fmt.Errorf("mismatched lease observation")
 		}
 	} else if o.Current != nil {
@@ -221,21 +244,27 @@ func acquired(r *v1.TryAcquireResponse) (*GrantResult, error) {
 	return grant(r.GetAcquired(), r.Replayed, r.Observation)
 }
 func (c *Client) TryAcquire(ctx context.Context, r AcquireRequest) (*GrantResult, error) {
+	if r.Capacity != c.capacity {
+		return nil, fmt.Errorf("acquisition capacity does not match client")
+	}
 	ms, err := ttl(r.TTL)
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.rpc.TryAcquire(ctx, authorize(c, &v1.TryAcquireRequest{Resource: resource(r.Resource), RequestId: r.RequestID, HolderRef: r.HolderRef, LeaseTtlMs: ms, Attempt: wireAttempt(r.Attempt)}))
+	res, err := c.rpc.TryAcquire(ctx, authorize(c, &v1.TryAcquireRequest{SemaphoreCapacity: r.Capacity, Resource: resource(r.Resource), RequestId: r.RequestID, HolderRef: r.HolderRef, LeaseTtlMs: ms, Attempt: wireAttempt(r.Attempt)}))
 	if err != nil {
 		return nil, err
 	}
 	g, err := acquired(res.Msg)
-	if err == nil && !g.Contended && (g.Receipt.Resource != r.Resource || g.Receipt.AcquisitionID != r.RequestID || g.Receipt.HolderRef != r.HolderRef) {
+	if err == nil && !g.Contended && (g.Receipt.Capacity != c.capacity || g.Receipt.Resource != r.Resource || g.Receipt.AcquisitionID != r.RequestID || g.Receipt.HolderRef != r.HolderRef) {
 		return nil, fmt.Errorf("response does not match acquisition")
 	}
 	return g, err
 }
 func (c *Client) Renew(ctx context.Context, r RenewRequest) (*GrantResult, error) {
+	if err := c.checkRenewal(r.Lease); err != nil {
+		return nil, err
+	}
 	ms, err := ttl(r.TTL)
 	if err != nil {
 		return nil, err
@@ -245,12 +274,15 @@ func (c *Client) Renew(ctx context.Context, r RenewRequest) (*GrantResult, error
 		return nil, err
 	}
 	g, err := grant(res.Msg.Lease, res.Msg.Replayed, res.Msg.Observation)
-	if err == nil && (g.Receipt.Resource != r.Lease.Resource || g.Receipt.LeaseID != r.Lease.LeaseID || g.Receipt.FencingToken != r.Lease.FencingToken) {
+	if err == nil && (g.Receipt.PermitSlot != r.Lease.PermitSlot || g.Receipt.Capacity != r.Lease.Capacity || g.Receipt.Resource != r.Lease.Resource || g.Receipt.LeaseID != r.Lease.LeaseID || g.Receipt.FencingToken != r.Lease.FencingToken) {
 		return nil, fmt.Errorf("response does not match renewal")
 	}
 	return g, err
 }
 func (c *Client) Release(ctx context.Context, r ReleaseRequest) (*ReleaseResult, error) {
+	if err := c.checkLease(r.Lease); err != nil {
+		return nil, err
+	}
 	res, err := c.rpc.Release(ctx, authorize(c, &v1.ReleaseRequest{Resource: resource(r.Lease.Resource), RequestId: r.RequestID, LeaseId: r.Lease.LeaseID, Attempt: wireAttempt(r.Attempt)}))
 	if err != nil {
 		return nil, err
@@ -291,10 +323,10 @@ func (c *Client) GetAttemptStatus(ctx context.Context, r Resource, id string, at
 	default:
 		err = fmt.Errorf("missing request status")
 	}
-	if err == nil && s.Acquired != nil && !s.Acquired.Contended && (s.Acquired.Receipt.Resource != r || s.Acquired.Receipt.AcquisitionID != id) {
+	if err == nil && s.Acquired != nil && !s.Acquired.Contended && (s.Acquired.Receipt.Capacity != c.capacity || s.Acquired.Receipt.Resource != r || s.Acquired.Receipt.AcquisitionID != id) {
 		return nil, fmt.Errorf("status does not match acquisition")
 	}
-	if err == nil && s.Renewed != nil && s.Renewed.Receipt.Resource != r {
+	if err == nil && s.Renewed != nil && (s.Renewed.Receipt.Capacity != c.capacity || s.Renewed.Receipt.Resource != r) {
 		return nil, fmt.Errorf("status does not match resource")
 	}
 	return s, err

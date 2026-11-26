@@ -17,6 +17,12 @@ pub enum Command {
         holder: String,
         ttl_ms: u64,
     },
+    AcquirePermit {
+        id: String,
+        holder: String,
+        ttl_ms: u64,
+        capacity: u32,
+    },
     Renew {
         id: String,
         token: String,
@@ -34,6 +40,7 @@ impl Command {
     pub fn id(&self) -> &str {
         match self {
             Self::Acquire { id, .. }
+            | Self::AcquirePermit { id, .. }
             | Self::Renew { id, .. }
             | Self::Release { id, .. }
             | Self::Status { id } => id,
@@ -41,7 +48,9 @@ impl Command {
     }
     fn ttl(&self) -> Option<u64> {
         match self {
-            Self::Acquire { ttl_ms, .. } | Self::Renew { ttl_ms, .. } => Some(*ttl_ms),
+            Self::Acquire { ttl_ms, .. }
+            | Self::AcquirePermit { ttl_ms, .. }
+            | Self::Renew { ttl_ms, .. } => Some(*ttl_ms),
             _ => None,
         }
     }
@@ -59,6 +68,12 @@ impl Command {
             && self.token().is_none_or(capability)
             && match self {
                 Self::Acquire { holder, .. } => identifier(holder, 64),
+                Self::AcquirePermit {
+                    holder, capacity, ..
+                } => {
+                    identifier(holder, 64)
+                        && (1..=crate::semaphore::MAX_CAPACITY).contains(capacity)
+                }
                 _ => true,
             }
     }
@@ -79,6 +94,8 @@ pub fn capability(value: &str) -> bool {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Lease {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permit: Option<crate::semaphore::Permit>,
     pub acquisition_id: String,
     pub subject: String,
     pub holder: String,
@@ -88,8 +105,9 @@ pub struct Lease {
     pub expires_at_ms: String,
 }
 impl Lease {
-    fn valid(&self) -> bool {
-        identifier(&self.acquisition_id, 128)
+    pub(crate) fn valid(&self) -> bool {
+        self.permit.as_ref().is_none_or(|p| p.valid())
+            && identifier(&self.acquisition_id, 128)
             && identifier(&self.subject, 32)
             && identifier(&self.holder, 64)
             && capability(&self.token)
@@ -129,6 +147,7 @@ pub enum Rejection {
     Acknowledged,
     InvalidArgument,
     Conflict,
+    CapacityMismatch,
     NotOwner,
     LeaseLost,
     Exhausted,
@@ -185,8 +204,17 @@ fn valid_receipt(r: &Receipt, id: &str, fence: u64, revision: u64) -> bool {
         return false;
     }
     match (&r.command, &r.mutation) {
-        (Command::Acquire { id, holder, .. }, Mutation::Acquired(l)) => {
+        (
+            Command::Acquire { id, holder, .. } | Command::AcquirePermit { id, holder, .. },
+            Mutation::Acquired(l),
+        ) => {
             l.valid()
+                && match &r.command {
+                    Command::AcquirePermit { capacity, .. } => {
+                        l.permit.as_ref().is_some_and(|p| p.capacity == *capacity)
+                    }
+                    _ => l.permit.is_none(),
+                }
                 && l.subject == r.subject
                 && &l.acquisition_id == id
                 && &l.holder == holder
@@ -237,16 +265,9 @@ pub fn execute(
     if count > MAX_RECEIPTS {
         return Err("invalid receipt count".into());
     }
-    let owner: Option<Lease> = match tx.get("owner")? {
-        None => None,
-        Some(s) => serde_json::from_str(&s).map_err(|e| e.to_string())?,
-    };
-    if owner.as_ref().is_some_and(|l| {
-        !l.valid()
-            || counter(&l.fence).unwrap() != fence
-            || counter(&l.revision).unwrap() != revision
-    }) {
-        return Err("invalid stored owner".into());
+    let mut owners = crate::semaphore::Owners::load(tx, fence, revision)?;
+    if !owners.accepts(command) {
+        return rejected(Rejection::InvalidArgument);
     }
     let key = format!("request/{}", command.id());
     let old = tx.get(&key)?;
@@ -264,7 +285,8 @@ pub fn execute(
         if !matches!(command, Command::Status { .. }) && receipt.command != *command {
             return rejected(Rejection::Conflict);
         }
-        let observation = observe(&receipt, &owner, fence, now);
+        let (owner, slot_fence) = owners.observe(&receipt, fence)?;
+        let observation = observe(&receipt, &owner, slot_fence, now);
         return Ok(Reply::Applied {
             receipt: Box::new(receipt),
             replayed: true,
@@ -288,14 +310,19 @@ pub fn execute(
         return rejected(Rejection::Exhausted);
     }
     let mutation = match command {
-        Command::Acquire { id, holder, ttl_ms } => {
-            if owner
-                .as_ref()
-                .is_some_and(|l| now < counter(&l.expires_at_ms).expect("validated owner"))
+        Command::Acquire { id, holder, ttl_ms }
+        | Command::AcquirePermit {
+            id, holder, ttl_ms, ..
+        } => {
+            if let Command::AcquirePermit { capacity, .. } = command
+                && !owners.configure(*capacity)
             {
-                return Ok(Reply::Contended);
+                return rejected(Rejection::CapacityMismatch);
             }
-            if !capability(new_token) {
+            let Some(slot) = owners.available(now) else {
+                return Ok(Reply::Contended);
+            };
+            if !capability(new_token) || owners.contains_token(new_token) {
                 return Err("invalid generated capability".into());
             }
             let Some(next_fence) = fence.checked_add(1) else {
@@ -305,6 +332,7 @@ pub fn execute(
                 return rejected(Rejection::Exhausted);
             };
             let l = Lease {
+                permit: owners.permit(slot),
                 acquisition_id: id.clone(),
                 subject: subject.into(),
                 holder: holder.clone(),
@@ -313,16 +341,17 @@ pub fn execute(
                 revision: next_revision.to_string(),
                 expires_at_ms: expires.to_string(),
             };
-            tx.put(
-                "owner",
-                &serde_json::to_string(&Some(&l)).map_err(|e| e.to_string())?,
-            )?;
+            owners.set(tx, slot, Some(l.clone()), next_fence)?;
             tx.put("fence", &l.fence)?;
             Mutation::Acquired(l)
         }
         Command::Renew { token, .. } | Command::Release { token, .. } => {
-            let Some(mut l) = owner else {
-                return rejected(Rejection::LeaseLost);
+            let Some((slot, mut l)) = owners.find(token) else {
+                return rejected(if owners.empty() {
+                    Rejection::LeaseLost
+                } else {
+                    Rejection::NotOwner
+                });
             };
             if l.subject != subject || !bool::from(l.token.as_bytes().ct_eq(token.as_bytes())) {
                 return rejected(Rejection::NotOwner);
@@ -337,13 +366,10 @@ pub fn execute(
                 };
                 l.expires_at_ms = expires.max(counter(&l.expires_at_ms)?).to_string();
                 l.revision = next_revision.to_string();
-                tx.put(
-                    "owner",
-                    &serde_json::to_string(&Some(&l)).map_err(|e| e.to_string())?,
-                )?;
+                owners.set(tx, slot, Some(l.clone()), counter(&l.fence)?)?;
                 Mutation::Renewed(l)
             } else {
-                tx.put("owner", "null")?;
+                owners.set(tx, slot, None, counter(&l.fence)?)?;
                 Mutation::Released {
                     token: token.clone(),
                     revision: next_revision.to_string(),

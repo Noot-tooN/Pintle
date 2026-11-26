@@ -231,3 +231,35 @@ characters, holder 1–64 ASCII identifier bytes. Identifier characters are
 letters/digits plus `._:-`; no Unicode normalization occurs. Tenant identity comes
 from authentication. Do not log credentials, request objects or lease capabilities;
 debug redaction is not a general serialization guarantee.
+
+## Semaphore permits
+
+```go
+sem, err := client.Semaphore(2) // retain and reuse this bound client
+if err != nil { return err }
+return sem.WithPermit(ctx, pintle.Resource{Namespace: "jobs", Key: "render-pool"},
+    pintle.LeaseOptions{}, func(work context.Context, permit pintle.Lease) error {
+        return renderDisposablePreview(work) // join child work; honor cancellation
+    })
+```
+
+One acquisition holds one permit. Capacity (1..64) is fixed by the resource's
+first successful grant; mismatches fail explicitly. Weighted permits and resize
+are not implemented. Mutex and semaphore names occupy separate authorities.
+The semaphore-bound client also exposes OpenSession, Acquire/TryAcquire,
+Renew/Release, CancelPending, status and ACK, using the existing request types.
+Prepared acquisitions retain Capacity; use the same service/capacity for recovery.
+
+WithPermit shares WithLease's renewal, cancellation and bounded cleanup behavior,
+including `WithLeaseError` recovery fields. A callback receives `Lease` with
+`PermitSlot` and `Capacity`; metadata and fencing stay stable across renewals.
+Fencing is optional, and any cooperating destination must guard **resource + slot**,
+not reject every permit older than the largest resource-wide fence. The helper
+does not require another database or stop non-cooperative work after expiry.
+
+Existing bounds still apply: 16 sessions per resource (one reserved for active
+owner recovery), 32 positions/session, 16 waiters. Each concurrent WithPermit
+borrows a session, so capacity 64 is not a promise of 64 managed callbacks.
+Keep a bound client instead of calling Semaphore for every job. See the
+[executable example](../../../examples/semaphore/main.go) and
+[precise semantics](../../../docs/adr/ADR-021-unweighted-semaphore.md).

@@ -87,7 +87,7 @@ test-runtime filter='.*':
     ./bin/go test -race -count=1 -timeout=3m -v ./tests/integration -run "$1"
 
 # Run controlled-clock/fault tests; always restore normal Wasm, including on failure.
-test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries':
+test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries|TestP4':
     restore() {
       status=$?
       trap - EXIT
@@ -124,6 +124,8 @@ check-sdk-package:
     "$project_dir/bin/go" mod tidy
     "$project_dir/bin/go" build -mod=readonly -o consumer .
     ./consumer -h
+    cp "$project_dir/examples/semaphore/main.go" main.go
+    "$project_dir/bin/go" build -mod=readonly -o semaphore-consumer .
 
 # Run all example commands against an automatically managed local Wrangler.
 example-local:
@@ -132,6 +134,10 @@ example-local:
 # Run one example against an explicitly configured endpoint; no server deployment.
 example mode='lifecycle':
     ./bin/go run ./examples/mutex -mode "$1"
+
+# Run the semaphore example against an explicitly configured endpoint.
+example-semaphore:
+    ./bin/go run ./examples/semaphore
 
 # Query online npm and Rust/Go advisory databases; separate from correctness tests.
 audit:

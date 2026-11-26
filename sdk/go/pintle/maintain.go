@@ -3,7 +3,6 @@ package pintle
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -89,8 +88,8 @@ func (c *Client) Maintain(ctx context.Context, l Lease, d time.Duration) (*Maint
 	if _, err := ttl(d); err != nil {
 		return nil, err
 	}
-	if !validResource(l.Resource) || l.LeaseID == "" {
-		return nil, fmt.Errorf("valid known lease required")
+	if err := c.checkRenewal(l); err != nil {
+		return nil, err
 	}
 	call, cancel := context.WithTimeout(ctx, d/3)
 	s, err := c.OpenSession(call, l.Resource)

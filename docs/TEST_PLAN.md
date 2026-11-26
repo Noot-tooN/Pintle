@@ -225,3 +225,14 @@ session reuse and exact tokens. Normal local Wrangler verifies committed-respons
 loss and both new executable examples; instrumented Wrangler orders concurrent
 callback handoff/cancellation at durable wait registration. These run in the
 existing Hermit/Just full suite with the Go race detector.
+
+## P4 semaphore gate
+
+See [P4 test evidence and limits](p4-semaphore-results.md). Native tests model
+167,958 admission/expiry prefixes and exercise slot-specific observation,
+configuration, rollback and queue boundaries. Real local Wrangler tests use
+controlled logical time and commit/response barriers, SQL/Rust fault injection,
+restart, alarm dispatch and exact counter seeding. `just test-hardening` includes
+`TestP4`; `just example-local` includes the separate semaphore executable. The
+full `just test` suite retains every mutex regression and package-consumer check.
+Hosted semaphore and alternate-backend conformance remain unverified.

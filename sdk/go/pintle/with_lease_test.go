@@ -59,6 +59,10 @@ func (f *leaseRPC) Acquire(ctx context.Context, req *connect.Request[v1.AcquireR
 	f.mu.Lock()
 	f.acquireRequest = proto.Clone(req.Msg).(*v1.AcquireRequest)
 	f.lease = wireLease()
+	f.lease.SemaphoreCapacity = req.Msg.Acquisition.SemaphoreCapacity
+	if f.lease.SemaphoreCapacity > 0 {
+		f.lease.PermitSlot = 1
+	}
 	f.lease.Resource = req.Msg.Acquisition.Resource
 	f.lease.RequestId = req.Msg.Acquisition.RequestId
 	f.lease.HolderRef = req.Msg.Acquisition.HolderRef
@@ -577,4 +581,56 @@ func TestWithLeaseInactiveGrantAndCleanupBudget(t *testing.T) {
 			t.Fatal("cleanup timeout discarded recovery")
 		}
 	})
+}
+
+type ackReplyRPC struct {
+	*leaseRPC
+	reply *v1.RecoverySession
+}
+
+func (f ackReplyRPC) AcknowledgeSession(context.Context, *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error) {
+	return connect.NewResponse(&v1.AcknowledgeSessionResponse{Session: f.reply}), nil
+}
+
+func TestAckMustConfirmRequestedSessionAndSequence(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name  string
+		reply *v1.RecoverySession
+		ok    bool
+	}{
+		{"missing", nil, false}, {"wrong session", sessionInfo("2", "3"), false},
+		{"short", sessionInfo("1", "2"), false}, {"exact", sessionInfo("1", "3"), true},
+		{"already past", sessionInfo("1", "4"), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &leaseRPC{}
+			c := leaseTestClient(f)
+			c.rpc = ackReplyRPC{f, tc.reply}
+			s := &Session{client: c, resource: Resource{"test", "key"}, id: "1", acknowledged: 1, next: 5, window: 32}
+			if err := s.Acknowledge(ctx, 3); (err == nil) != tc.ok {
+				t.Errorf("session ACK: %v", err)
+			}
+			if !tc.ok && s.acknowledged != 1 {
+				t.Error("invalid reply changed the local boundary")
+			}
+			if err := c.AcknowledgeAttempt(ctx, s.resource, Attempt{SessionID: "1", Sequence: 3}); (err == nil) != tc.ok {
+				t.Errorf("recovery ACK: %v", err)
+			}
+		})
+	}
+}
+
+func TestWithLeaseShortRenewalAckPreventsCallback(t *testing.T) {
+	f := &leaseRPC{}
+	c := leaseTestClient(f)
+	c.rpc = ackReplyRPC{f, sessionInfo("1", "0")}
+	called := false
+	err := callLease(c, context.Background(), func(context.Context, Lease) error { called = true; return nil }, quietRenewal)
+	if called || !errors.Is(err, ErrLeaseUncertain) || len(c.leaseSessions.idle) != 0 {
+		t.Fatal("short ACK allowed work, lost uncertainty, or cached the session")
+	}
+	if leaseFailure(t, err).Renew == nil {
+		t.Fatal("unconfirmed renewal identity discarded")
+	}
 }

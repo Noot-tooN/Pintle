@@ -183,9 +183,11 @@ func (x *ResourceId) GetKey() string {
 }
 
 type TryAcquireRequest struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Resource  *ResourceId            `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
-	RequestId string                 `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required (1..64) on SemaphoreService; must be zero on LockService.
+	SemaphoreCapacity uint32      `protobuf:"varint,6,opt,name=semaphore_capacity,json=semaphoreCapacity,proto3" json:"semaphore_capacity,omitempty"`
+	Resource          *ResourceId `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
+	RequestId         string      `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	// A caller's attempt label, not a secret or ownership capability.
 	HolderRef string `protobuf:"bytes,3,opt,name=holder_ref,json=holderRef,proto3" json:"holder_ref,omitempty"`
 	// P1 requires 100..60000ms. Zero is rejected by the P1 server.
@@ -223,6 +225,13 @@ func (x *TryAcquireRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use TryAcquireRequest.ProtoReflect.Descriptor instead.
 func (*TryAcquireRequest) Descriptor() ([]byte, []int) {
 	return file_pintle_v1_lock_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *TryAcquireRequest) GetSemaphoreCapacity() uint32 {
+	if x != nil {
+		return x.SemaphoreCapacity
+	}
+	return 0
 }
 
 func (x *TryAcquireRequest) GetResource() *ResourceId {
@@ -361,8 +370,11 @@ func (*TryAcquireResponse_Contended) isTryAcquireResponse_Outcome() {}
 
 // Immutable operation receipt. Consult observation for current lease validity.
 type GrantReceipt struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Resource *ResourceId            `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Both zero for mutexes. Fencing on semaphores is scoped to resource + slot.
+	PermitSlot        uint32      `protobuf:"varint,8,opt,name=permit_slot,json=permitSlot,proto3" json:"permit_slot,omitempty"`
+	SemaphoreCapacity uint32      `protobuf:"varint,9,opt,name=semaphore_capacity,json=semaphoreCapacity,proto3" json:"semaphore_capacity,omitempty"`
+	Resource          *ResourceId `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
 	// Original acquisition ID, including in a Renew receipt. Renew's own request
 	// ID is its immutable label; P1.1 dedupe/status also requires session/sequence.
 	RequestId string `protobuf:"bytes,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -405,6 +417,20 @@ func (x *GrantReceipt) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GrantReceipt.ProtoReflect.Descriptor instead.
 func (*GrantReceipt) Descriptor() ([]byte, []int) {
 	return file_pintle_v1_lock_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GrantReceipt) GetPermitSlot() uint32 {
+	if x != nil {
+		return x.PermitSlot
+	}
+	return 0
+}
+
+func (x *GrantReceipt) GetSemaphoreCapacity() uint32 {
+	if x != nil {
+		return x.SemaphoreCapacity
+	}
+	return 0
 }
 
 func (x *GrantReceipt) GetResource() *ResourceId {
@@ -1531,8 +1557,9 @@ const file_pintle_v1_lock_proto_rawDesc = "" +
 	"\n" +
 	"ResourceId\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\"\xdb\x01\n" +
-	"\x11TryAcquireRequest\x121\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\"\x8a\x02\n" +
+	"\x11TryAcquireRequest\x12-\n" +
+	"\x12semaphore_capacity\x18\x06 \x01(\rR\x11semaphoreCapacity\x121\n" +
 	"\bresource\x18\x01 \x01(\v2\x15.pintle.v1.ResourceIdR\bresource\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x1d\n" +
@@ -1546,8 +1573,11 @@ const file_pintle_v1_lock_proto_rawDesc = "" +
 	"\tcontended\x18\x02 \x01(\v2\x14.pintle.v1.ContendedH\x00R\tcontended\x12\x1a\n" +
 	"\breplayed\x18\x03 \x01(\bR\breplayed\x12=\n" +
 	"\vobservation\x18\x04 \x01(\v2\x1b.pintle.v1.LeaseObservationR\vobservationB\t\n" +
-	"\aoutcome\"\x88\x02\n" +
-	"\fGrantReceipt\x121\n" +
+	"\aoutcome\"\xd8\x02\n" +
+	"\fGrantReceipt\x12\x1f\n" +
+	"\vpermit_slot\x18\b \x01(\rR\n" +
+	"permitSlot\x12-\n" +
+	"\x12semaphore_capacity\x18\t \x01(\rR\x11semaphoreCapacity\x121\n" +
 	"\bresource\x18\x01 \x01(\v2\x15.pintle.v1.ResourceIdR\bresource\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x02 \x01(\tR\trequestId\x12\x1d\n" +
@@ -1647,6 +1677,16 @@ const file_pintle_v1_lock_proto_rawDesc = "" +
 	"\aRelease\x12\x19.pintle.v1.ReleaseRequest\x1a\x1a.pintle.v1.ReleaseResponse\x12[\n" +
 	"\x10GetRequestStatus\x12\".pintle.v1.GetRequestStatusRequest\x1a#.pintle.v1.GetRequestStatusResponse\x12L\n" +
 	"\vOpenSession\x12\x1d.pintle.v1.OpenSessionRequest\x1a\x1e.pintle.v1.OpenSessionResponse\x12a\n" +
+	"\x12AcknowledgeSession\x12$.pintle.v1.AcknowledgeSessionRequest\x1a%.pintle.v1.AcknowledgeSessionResponse2\xff\x04\n" +
+	"\x10SemaphoreService\x12@\n" +
+	"\aAcquire\x12\x19.pintle.v1.AcquireRequest\x1a\x1a.pintle.v1.AcquireResponse\x12R\n" +
+	"\rCancelPending\x12\x1f.pintle.v1.CancelPendingRequest\x1a .pintle.v1.CancelPendingResponse\x12I\n" +
+	"\n" +
+	"TryAcquire\x12\x1c.pintle.v1.TryAcquireRequest\x1a\x1d.pintle.v1.TryAcquireResponse\x12:\n" +
+	"\x05Renew\x12\x17.pintle.v1.RenewRequest\x1a\x18.pintle.v1.RenewResponse\x12@\n" +
+	"\aRelease\x12\x19.pintle.v1.ReleaseRequest\x1a\x1a.pintle.v1.ReleaseResponse\x12[\n" +
+	"\x10GetRequestStatus\x12\".pintle.v1.GetRequestStatusRequest\x1a#.pintle.v1.GetRequestStatusResponse\x12L\n" +
+	"\vOpenSession\x12\x1d.pintle.v1.OpenSessionRequest\x1a\x1e.pintle.v1.OpenSessionResponse\x12a\n" +
 	"\x12AcknowledgeSession\x12$.pintle.v1.AcknowledgeSessionRequest\x1a%.pintle.v1.AcknowledgeSessionResponseB7Z5github.com/Noot-tooN/Pintle/gen/go/pintle/v1;pintlev1b\x06proto3"
 
 var (
@@ -1727,16 +1767,32 @@ var file_pintle_v1_lock_proto_depIdxs = []int32{
 	12, // 34: pintle.v1.LockService.GetRequestStatus:input_type -> pintle.v1.GetRequestStatusRequest
 	15, // 35: pintle.v1.LockService.OpenSession:input_type -> pintle.v1.OpenSessionRequest
 	17, // 36: pintle.v1.LockService.AcknowledgeSession:input_type -> pintle.v1.AcknowledgeSessionRequest
-	21, // 37: pintle.v1.LockService.Acquire:output_type -> pintle.v1.AcquireResponse
-	23, // 38: pintle.v1.LockService.CancelPending:output_type -> pintle.v1.CancelPendingResponse
-	4,  // 39: pintle.v1.LockService.TryAcquire:output_type -> pintle.v1.TryAcquireResponse
-	9,  // 40: pintle.v1.LockService.Renew:output_type -> pintle.v1.RenewResponse
-	11, // 41: pintle.v1.LockService.Release:output_type -> pintle.v1.ReleaseResponse
-	13, // 42: pintle.v1.LockService.GetRequestStatus:output_type -> pintle.v1.GetRequestStatusResponse
-	16, // 43: pintle.v1.LockService.OpenSession:output_type -> pintle.v1.OpenSessionResponse
-	18, // 44: pintle.v1.LockService.AcknowledgeSession:output_type -> pintle.v1.AcknowledgeSessionResponse
-	37, // [37:45] is the sub-list for method output_type
-	29, // [29:37] is the sub-list for method input_type
+	20, // 37: pintle.v1.SemaphoreService.Acquire:input_type -> pintle.v1.AcquireRequest
+	22, // 38: pintle.v1.SemaphoreService.CancelPending:input_type -> pintle.v1.CancelPendingRequest
+	3,  // 39: pintle.v1.SemaphoreService.TryAcquire:input_type -> pintle.v1.TryAcquireRequest
+	8,  // 40: pintle.v1.SemaphoreService.Renew:input_type -> pintle.v1.RenewRequest
+	10, // 41: pintle.v1.SemaphoreService.Release:input_type -> pintle.v1.ReleaseRequest
+	12, // 42: pintle.v1.SemaphoreService.GetRequestStatus:input_type -> pintle.v1.GetRequestStatusRequest
+	15, // 43: pintle.v1.SemaphoreService.OpenSession:input_type -> pintle.v1.OpenSessionRequest
+	17, // 44: pintle.v1.SemaphoreService.AcknowledgeSession:input_type -> pintle.v1.AcknowledgeSessionRequest
+	21, // 45: pintle.v1.LockService.Acquire:output_type -> pintle.v1.AcquireResponse
+	23, // 46: pintle.v1.LockService.CancelPending:output_type -> pintle.v1.CancelPendingResponse
+	4,  // 47: pintle.v1.LockService.TryAcquire:output_type -> pintle.v1.TryAcquireResponse
+	9,  // 48: pintle.v1.LockService.Renew:output_type -> pintle.v1.RenewResponse
+	11, // 49: pintle.v1.LockService.Release:output_type -> pintle.v1.ReleaseResponse
+	13, // 50: pintle.v1.LockService.GetRequestStatus:output_type -> pintle.v1.GetRequestStatusResponse
+	16, // 51: pintle.v1.LockService.OpenSession:output_type -> pintle.v1.OpenSessionResponse
+	18, // 52: pintle.v1.LockService.AcknowledgeSession:output_type -> pintle.v1.AcknowledgeSessionResponse
+	21, // 53: pintle.v1.SemaphoreService.Acquire:output_type -> pintle.v1.AcquireResponse
+	23, // 54: pintle.v1.SemaphoreService.CancelPending:output_type -> pintle.v1.CancelPendingResponse
+	4,  // 55: pintle.v1.SemaphoreService.TryAcquire:output_type -> pintle.v1.TryAcquireResponse
+	9,  // 56: pintle.v1.SemaphoreService.Renew:output_type -> pintle.v1.RenewResponse
+	11, // 57: pintle.v1.SemaphoreService.Release:output_type -> pintle.v1.ReleaseResponse
+	13, // 58: pintle.v1.SemaphoreService.GetRequestStatus:output_type -> pintle.v1.GetRequestStatusResponse
+	16, // 59: pintle.v1.SemaphoreService.OpenSession:output_type -> pintle.v1.OpenSessionResponse
+	18, // 60: pintle.v1.SemaphoreService.AcknowledgeSession:output_type -> pintle.v1.AcknowledgeSessionResponse
+	45, // [45:61] is the sub-list for method output_type
+	29, // [29:45] is the sub-list for method input_type
 	29, // [29:29] is the sub-list for extension type_name
 	29, // [29:29] is the sub-list for extension extendee
 	0,  // [0:29] is the sub-list for field type_name
@@ -1769,7 +1825,7 @@ func file_pintle_v1_lock_proto_init() {
 			NumEnums:      2,
 			NumMessages:   22,
 			NumExtensions: 0,
-			NumServices:   1,
+			NumServices:   2,
 		},
 		GoTypes:           file_pintle_v1_lock_proto_goTypes,
 		DependencyIndexes: file_pintle_v1_lock_proto_depIdxs,

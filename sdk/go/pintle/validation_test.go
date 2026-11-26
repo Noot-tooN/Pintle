@@ -81,12 +81,12 @@ func TestResponseSizeAndSessionValidation(t *testing.T) {
 	}
 	for _, value := range []string{"01", "-1", "18446744073709551616"} {
 		s := &Session{next: 1}
-		if err := s.update(&v1.RecoverySession{SessionId: "1", AcknowledgedThrough: value, ExpiresAtUnixMs: "1000", RequestWindow: 32}); err == nil {
+		if err := s.update(&v1.RecoverySession{SessionId: "1", AcknowledgedThrough: value, ExpiresAtUnixMs: "1000", RequestWindow: 32}, 0); err == nil {
 			t.Fatal("noncanonical ACK accepted")
 		}
 	}
 	s := &Session{next: 1}
-	if err := s.update(&v1.RecoverySession{SessionId: "1", AcknowledgedThrough: "0", ExpiresAtUnixMs: "9007199254740992", RequestWindow: 32}); err == nil {
+	if err := s.update(&v1.RecoverySession{SessionId: "1", AcknowledgedThrough: "0", ExpiresAtUnixMs: "9007199254740992", RequestWindow: 32}, 0); err == nil {
 		t.Fatal("unsafe time accepted")
 	}
 }

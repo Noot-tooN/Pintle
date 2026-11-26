@@ -25,7 +25,10 @@ impl Wait {
             && self.deadline <= lease::MAX_TIME_MS
             && self.deadline == c.created.saturating_add(self.duration)
             && counter(&self.ticket).is_ok_and(|n| n > 0)
-            && matches!(c.command, Command::Acquire { .. })
+            && matches!(
+                c.command,
+                Command::Acquire { .. } | Command::AcquirePermit { .. }
+            )
             && (self.state == State::Complete || matches!(c.reply, Reply::Contended))
     }
 }
@@ -57,23 +60,43 @@ fn pending(tx: &impl Transaction) -> Result<Vec<(u64, usize, u64)>, String> {
     }
     Ok(list)
 }
-/// Expire deadlines, then grant the oldest eligible waiter. The caller wraps
-/// this and the triggering mutation in ONE transaction. At most one grant can
-/// occur per drive, so one fresh random capability suffices.
+/// Mutex compatibility entry point. Semaphores require a fresh capability per grant.
 pub fn drive(
     tx: &mut impl Transaction,
     now: u64,
     token: &str,
 ) -> Result<Option<Rejection>, String> {
+    if crate::semaphore::is_semaphore(tx)? {
+        return Err("semaphore requires token factory".into());
+    }
+    drive_with_tokens(tx, now, &mut || Ok(token.into()))
+}
+/// Fill available slots in FIFO order inside the triggering transaction.
+/// The adapter supplies a distinct cryptographic capability on each call.
+pub fn drive_with_tokens(
+    tx: &mut impl Transaction,
+    now: u64,
+    tokens: &mut dyn FnMut() -> Result<String, String>,
+) -> Result<Option<Rejection>, String> {
     if let Some(r) = cleanup(tx, now)? {
         return Ok(Some(r));
     }
     let list = pending(tx)?;
+    // Older authorities could persist an incompatible waiter behind a contended head.
+    let configured = if !list.is_empty() && crate::semaphore::is_semaphore(tx)? {
+        crate::semaphore::configured_capacity(tx)?
+    } else {
+        None
+    };
     for (_, slot, seq) in &list {
         let mut s = load(tx, *slot)?.ok_or("missing queued session")?;
         let c = s.entries.get_mut(seq).ok_or("missing queued entry")?;
         let w = c.waiting.as_mut().ok_or("missing queue metadata")?;
-        if now >= w.deadline {
+        if capacity_mismatch(&c.command, configured) {
+            c.reply = Reply::Rejected(Rejection::CapacityMismatch);
+            w.state = State::Complete;
+            save(tx, *slot, &s)?;
+        } else if now >= w.deadline {
             w.state = State::Expired;
             save(tx, *slot, &s)?;
         }
@@ -89,7 +112,7 @@ pub fn drive(
             &s.subject,
             &c.command,
             now,
-            token,
+            &tokens()?,
         )?;
         if matches!(reply, Reply::Contended) {
             break;
@@ -98,11 +121,14 @@ pub fn drive(
         c.reply = reply;
         c.waiting.as_mut().ok_or("missing queue metadata")?.state = State::Complete;
         save(tx, slot, &s)?;
-        if granted {
+        if granted && !crate::semaphore::is_semaphore(tx)? {
             break;
         }
     }
     Ok(None)
+}
+fn capacity_mismatch(command: &Command, configured: Option<u32>) -> bool {
+    matches!(command, Command::AcquirePermit { capacity, .. } if configured.is_some_and(|n| n != *capacity))
 }
 /// Register/resume or cancel the exact acquisition. Cancellation also records a
 /// terminal result before registration, preventing a delayed request from joining.
@@ -117,8 +143,36 @@ pub fn acquire(
     now: u64,
     token: &str,
 ) -> Result<Output, String> {
+    if crate::semaphore::is_semaphore(tx)? {
+        return Err("semaphore requires token factory".into());
+    }
+    acquire_with_tokens(
+        tx,
+        subject,
+        frame,
+        command,
+        duration,
+        cancel,
+        now,
+        &mut || Ok(token.into()),
+    )
+}
+#[allow(clippy::too_many_arguments)]
+fn acquire_with_tokens(
+    tx: &mut impl Transaction,
+    subject: &str,
+    frame: &Frame,
+    command: &Command,
+    duration: u64,
+    cancel: bool,
+    now: u64,
+    tokens: &mut dyn FnMut() -> Result<String, String>,
+) -> Result<Output, String> {
     if !command.valid()
-        || !matches!(command, Command::Acquire { .. })
+        || !matches!(
+            command,
+            Command::Acquire { .. } | Command::AcquirePermit { .. }
+        )
         || !(1..=MAX_WAIT_MS).contains(&duration)
         || frame.sequence == 0
         || counter(&frame.session_id).is_err()
@@ -156,7 +210,19 @@ pub fn acquire(
             }
         }
     } else {
-        if !cancel && pending(tx)?.len() >= MAX_PENDING {
+        let (state, reply) = if cancel {
+            (State::Cancelled, Reply::Contended)
+        } else if matches!(command, Command::AcquirePermit { .. })
+            && capacity_mismatch(command, crate::semaphore::configured_capacity(tx)?)
+        {
+            (
+                State::Complete,
+                Reply::Rejected(Rejection::CapacityMismatch),
+            )
+        } else {
+            (State::Pending, Reply::Contended)
+        };
+        if state == State::Pending && pending(tx)?.len() >= MAX_PENDING {
             return reject(Rejection::Exhausted);
         }
         let Some(ticket) =
@@ -175,24 +241,20 @@ pub fn acquire(
             frame.sequence,
             Cached {
                 command: command.clone(),
-                reply: Reply::Contended,
+                reply,
                 created: now,
                 waiting: Some(Wait {
                     duration,
                     deadline,
                     ticket: ticket.to_string(),
-                    state: if cancel {
-                        State::Cancelled
-                    } else {
-                        State::Pending
-                    },
+                    state,
                 }),
             },
         );
     }
     touch(&mut s, now)?;
     save(tx, slot, &s)?;
-    if let Some(r) = drive(tx, now, token)? {
+    if let Some(r) = drive_with_tokens(tx, now, tokens)? {
         return reject(r);
     }
     execute(
@@ -203,7 +265,7 @@ pub fn acquire(
             id: command.id().into(),
         },
         now,
-        token,
+        "",
     )
 }
 /// Next time-driven transition, including the owner's expiry only while there
@@ -221,13 +283,7 @@ pub fn next_wakeup(tx: &impl Transaction) -> Result<Option<u64>, String> {
         next = Some(next.map_or(deadline, |n| n.min(deadline)));
     }
     if !list.is_empty() {
-        let owner: Option<lease::Lease> =
-            serde_json::from_str(&tx.get("owner")?.unwrap_or_else(|| "null".into()))
-                .map_err(|e| e.to_string())?;
-        let expiry = owner
-            .map(|o| counter(&o.expires_at_ms))
-            .transpose()?
-            .unwrap_or(0);
+        let expiry = crate::semaphore::next_available(tx)?;
         next = Some(next.map_or(expiry, |n| n.min(expiry)));
     }
     Ok(next)
@@ -258,24 +314,38 @@ pub fn apply(
     now: u64,
     token: &str,
 ) -> Result<Output, String> {
+    if crate::semaphore::is_semaphore(tx)? {
+        return Err("semaphore requires token factory".into());
+    }
+    apply_with_tokens(tx, subject, action, now, &mut || Ok(token.into()))
+}
+pub fn apply_with_tokens(
+    tx: &mut impl Transaction,
+    subject: &str,
+    action: Action<'_>,
+    now: u64,
+    tokens: &mut dyn FnMut() -> Result<String, String>,
+) -> Result<Output, String> {
     let acquisition = matches!(action, Action::Acquire { .. });
     if !matches!(action, Action::Acquire { cancel: true, .. })
-        && let Some(r) = drive(tx, now, token)?
+        && let Some(r) = drive_with_tokens(tx, now, tokens)?
     {
         return reject(r);
     }
     let result = match action {
         Action::Open => open(tx, subject, now)?,
         Action::Acknowledge { id, through } => ack(tx, subject, id, through, now)?,
-        Action::Execute { frame, command } => execute(tx, subject, frame, command, now, token)?,
+        Action::Execute { frame, command } => {
+            execute(tx, subject, frame, command, now, &tokens()?)?
+        }
         Action::Acquire {
             frame,
             command,
             duration,
             cancel,
-        } => acquire(tx, subject, frame, command, duration, cancel, now, token)?,
+        } => acquire_with_tokens(tx, subject, frame, command, duration, cancel, now, tokens)?,
     };
-    if !acquisition && let Some(r) = drive(tx, now, token)? {
+    if !acquisition && let Some(r) = drive_with_tokens(tx, now, tokens)? {
         return reject(r);
     }
     Ok(result)

@@ -23,6 +23,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// LockServiceName is the fully-qualified name of the LockService service.
 	LockServiceName = "pintle.v1.LockService"
+	// SemaphoreServiceName is the fully-qualified name of the SemaphoreService service.
+	SemaphoreServiceName = "pintle.v1.SemaphoreService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -52,6 +54,29 @@ const (
 	// LockServiceAcknowledgeSessionProcedure is the fully-qualified name of the LockService's
 	// AcknowledgeSession RPC.
 	LockServiceAcknowledgeSessionProcedure = "/pintle.v1.LockService/AcknowledgeSession"
+	// SemaphoreServiceAcquireProcedure is the fully-qualified name of the SemaphoreService's Acquire
+	// RPC.
+	SemaphoreServiceAcquireProcedure = "/pintle.v1.SemaphoreService/Acquire"
+	// SemaphoreServiceCancelPendingProcedure is the fully-qualified name of the SemaphoreService's
+	// CancelPending RPC.
+	SemaphoreServiceCancelPendingProcedure = "/pintle.v1.SemaphoreService/CancelPending"
+	// SemaphoreServiceTryAcquireProcedure is the fully-qualified name of the SemaphoreService's
+	// TryAcquire RPC.
+	SemaphoreServiceTryAcquireProcedure = "/pintle.v1.SemaphoreService/TryAcquire"
+	// SemaphoreServiceRenewProcedure is the fully-qualified name of the SemaphoreService's Renew RPC.
+	SemaphoreServiceRenewProcedure = "/pintle.v1.SemaphoreService/Renew"
+	// SemaphoreServiceReleaseProcedure is the fully-qualified name of the SemaphoreService's Release
+	// RPC.
+	SemaphoreServiceReleaseProcedure = "/pintle.v1.SemaphoreService/Release"
+	// SemaphoreServiceGetRequestStatusProcedure is the fully-qualified name of the SemaphoreService's
+	// GetRequestStatus RPC.
+	SemaphoreServiceGetRequestStatusProcedure = "/pintle.v1.SemaphoreService/GetRequestStatus"
+	// SemaphoreServiceOpenSessionProcedure is the fully-qualified name of the SemaphoreService's
+	// OpenSession RPC.
+	SemaphoreServiceOpenSessionProcedure = "/pintle.v1.SemaphoreService/OpenSession"
+	// SemaphoreServiceAcknowledgeSessionProcedure is the fully-qualified name of the SemaphoreService's
+	// AcknowledgeSession RPC.
+	SemaphoreServiceAcknowledgeSessionProcedure = "/pintle.v1.SemaphoreService/AcknowledgeSession"
 )
 
 // LockServiceClient is a client for the pintle.v1.LockService service.
@@ -306,4 +331,258 @@ func (UnimplementedLockServiceHandler) OpenSession(context.Context, *connect.Req
 
 func (UnimplementedLockServiceHandler) AcknowledgeSession(context.Context, *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.LockService.AcknowledgeSession is not implemented"))
+}
+
+// SemaphoreServiceClient is a client for the pintle.v1.SemaphoreService service.
+type SemaphoreServiceClient interface {
+	// Retry ambiguous outcomes with the SAME request_id, attempt, and payload. Never GET.
+	Acquire(context.Context, *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error)
+	CancelPending(context.Context, *connect.Request[v1.CancelPendingRequest]) (*connect.Response[v1.CancelPendingResponse], error)
+	TryAcquire(context.Context, *connect.Request[v1.TryAcquireRequest]) (*connect.Response[v1.TryAcquireResponse], error)
+	Renew(context.Context, *connect.Request[v1.RenewRequest]) (*connect.Response[v1.RenewResponse], error)
+	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
+	GetRequestStatus(context.Context, *connect.Request[v1.GetRequestStatusRequest]) (*connect.Response[v1.GetRequestStatusResponse], error)
+	OpenSession(context.Context, *connect.Request[v1.OpenSessionRequest]) (*connect.Response[v1.OpenSessionResponse], error)
+	AcknowledgeSession(context.Context, *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error)
+}
+
+// NewSemaphoreServiceClient constructs a client for the pintle.v1.SemaphoreService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewSemaphoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SemaphoreServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	semaphoreServiceMethods := v1.File_pintle_v1_lock_proto.Services().ByName("SemaphoreService").Methods()
+	return &semaphoreServiceClient{
+		acquire: connect.NewClient[v1.AcquireRequest, v1.AcquireResponse](
+			httpClient,
+			baseURL+SemaphoreServiceAcquireProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("Acquire")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelPending: connect.NewClient[v1.CancelPendingRequest, v1.CancelPendingResponse](
+			httpClient,
+			baseURL+SemaphoreServiceCancelPendingProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("CancelPending")),
+			connect.WithClientOptions(opts...),
+		),
+		tryAcquire: connect.NewClient[v1.TryAcquireRequest, v1.TryAcquireResponse](
+			httpClient,
+			baseURL+SemaphoreServiceTryAcquireProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("TryAcquire")),
+			connect.WithClientOptions(opts...),
+		),
+		renew: connect.NewClient[v1.RenewRequest, v1.RenewResponse](
+			httpClient,
+			baseURL+SemaphoreServiceRenewProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("Renew")),
+			connect.WithClientOptions(opts...),
+		),
+		release: connect.NewClient[v1.ReleaseRequest, v1.ReleaseResponse](
+			httpClient,
+			baseURL+SemaphoreServiceReleaseProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("Release")),
+			connect.WithClientOptions(opts...),
+		),
+		getRequestStatus: connect.NewClient[v1.GetRequestStatusRequest, v1.GetRequestStatusResponse](
+			httpClient,
+			baseURL+SemaphoreServiceGetRequestStatusProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("GetRequestStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		openSession: connect.NewClient[v1.OpenSessionRequest, v1.OpenSessionResponse](
+			httpClient,
+			baseURL+SemaphoreServiceOpenSessionProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("OpenSession")),
+			connect.WithClientOptions(opts...),
+		),
+		acknowledgeSession: connect.NewClient[v1.AcknowledgeSessionRequest, v1.AcknowledgeSessionResponse](
+			httpClient,
+			baseURL+SemaphoreServiceAcknowledgeSessionProcedure,
+			connect.WithSchema(semaphoreServiceMethods.ByName("AcknowledgeSession")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// semaphoreServiceClient implements SemaphoreServiceClient.
+type semaphoreServiceClient struct {
+	acquire            *connect.Client[v1.AcquireRequest, v1.AcquireResponse]
+	cancelPending      *connect.Client[v1.CancelPendingRequest, v1.CancelPendingResponse]
+	tryAcquire         *connect.Client[v1.TryAcquireRequest, v1.TryAcquireResponse]
+	renew              *connect.Client[v1.RenewRequest, v1.RenewResponse]
+	release            *connect.Client[v1.ReleaseRequest, v1.ReleaseResponse]
+	getRequestStatus   *connect.Client[v1.GetRequestStatusRequest, v1.GetRequestStatusResponse]
+	openSession        *connect.Client[v1.OpenSessionRequest, v1.OpenSessionResponse]
+	acknowledgeSession *connect.Client[v1.AcknowledgeSessionRequest, v1.AcknowledgeSessionResponse]
+}
+
+// Acquire calls pintle.v1.SemaphoreService.Acquire.
+func (c *semaphoreServiceClient) Acquire(ctx context.Context, req *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error) {
+	return c.acquire.CallUnary(ctx, req)
+}
+
+// CancelPending calls pintle.v1.SemaphoreService.CancelPending.
+func (c *semaphoreServiceClient) CancelPending(ctx context.Context, req *connect.Request[v1.CancelPendingRequest]) (*connect.Response[v1.CancelPendingResponse], error) {
+	return c.cancelPending.CallUnary(ctx, req)
+}
+
+// TryAcquire calls pintle.v1.SemaphoreService.TryAcquire.
+func (c *semaphoreServiceClient) TryAcquire(ctx context.Context, req *connect.Request[v1.TryAcquireRequest]) (*connect.Response[v1.TryAcquireResponse], error) {
+	return c.tryAcquire.CallUnary(ctx, req)
+}
+
+// Renew calls pintle.v1.SemaphoreService.Renew.
+func (c *semaphoreServiceClient) Renew(ctx context.Context, req *connect.Request[v1.RenewRequest]) (*connect.Response[v1.RenewResponse], error) {
+	return c.renew.CallUnary(ctx, req)
+}
+
+// Release calls pintle.v1.SemaphoreService.Release.
+func (c *semaphoreServiceClient) Release(ctx context.Context, req *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {
+	return c.release.CallUnary(ctx, req)
+}
+
+// GetRequestStatus calls pintle.v1.SemaphoreService.GetRequestStatus.
+func (c *semaphoreServiceClient) GetRequestStatus(ctx context.Context, req *connect.Request[v1.GetRequestStatusRequest]) (*connect.Response[v1.GetRequestStatusResponse], error) {
+	return c.getRequestStatus.CallUnary(ctx, req)
+}
+
+// OpenSession calls pintle.v1.SemaphoreService.OpenSession.
+func (c *semaphoreServiceClient) OpenSession(ctx context.Context, req *connect.Request[v1.OpenSessionRequest]) (*connect.Response[v1.OpenSessionResponse], error) {
+	return c.openSession.CallUnary(ctx, req)
+}
+
+// AcknowledgeSession calls pintle.v1.SemaphoreService.AcknowledgeSession.
+func (c *semaphoreServiceClient) AcknowledgeSession(ctx context.Context, req *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error) {
+	return c.acknowledgeSession.CallUnary(ctx, req)
+}
+
+// SemaphoreServiceHandler is an implementation of the pintle.v1.SemaphoreService service.
+type SemaphoreServiceHandler interface {
+	// Retry ambiguous outcomes with the SAME request_id, attempt, and payload. Never GET.
+	Acquire(context.Context, *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error)
+	CancelPending(context.Context, *connect.Request[v1.CancelPendingRequest]) (*connect.Response[v1.CancelPendingResponse], error)
+	TryAcquire(context.Context, *connect.Request[v1.TryAcquireRequest]) (*connect.Response[v1.TryAcquireResponse], error)
+	Renew(context.Context, *connect.Request[v1.RenewRequest]) (*connect.Response[v1.RenewResponse], error)
+	Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error)
+	GetRequestStatus(context.Context, *connect.Request[v1.GetRequestStatusRequest]) (*connect.Response[v1.GetRequestStatusResponse], error)
+	OpenSession(context.Context, *connect.Request[v1.OpenSessionRequest]) (*connect.Response[v1.OpenSessionResponse], error)
+	AcknowledgeSession(context.Context, *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error)
+}
+
+// NewSemaphoreServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewSemaphoreServiceHandler(svc SemaphoreServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	semaphoreServiceMethods := v1.File_pintle_v1_lock_proto.Services().ByName("SemaphoreService").Methods()
+	semaphoreServiceAcquireHandler := connect.NewUnaryHandler(
+		SemaphoreServiceAcquireProcedure,
+		svc.Acquire,
+		connect.WithSchema(semaphoreServiceMethods.ByName("Acquire")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceCancelPendingHandler := connect.NewUnaryHandler(
+		SemaphoreServiceCancelPendingProcedure,
+		svc.CancelPending,
+		connect.WithSchema(semaphoreServiceMethods.ByName("CancelPending")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceTryAcquireHandler := connect.NewUnaryHandler(
+		SemaphoreServiceTryAcquireProcedure,
+		svc.TryAcquire,
+		connect.WithSchema(semaphoreServiceMethods.ByName("TryAcquire")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceRenewHandler := connect.NewUnaryHandler(
+		SemaphoreServiceRenewProcedure,
+		svc.Renew,
+		connect.WithSchema(semaphoreServiceMethods.ByName("Renew")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceReleaseHandler := connect.NewUnaryHandler(
+		SemaphoreServiceReleaseProcedure,
+		svc.Release,
+		connect.WithSchema(semaphoreServiceMethods.ByName("Release")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceGetRequestStatusHandler := connect.NewUnaryHandler(
+		SemaphoreServiceGetRequestStatusProcedure,
+		svc.GetRequestStatus,
+		connect.WithSchema(semaphoreServiceMethods.ByName("GetRequestStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceOpenSessionHandler := connect.NewUnaryHandler(
+		SemaphoreServiceOpenSessionProcedure,
+		svc.OpenSession,
+		connect.WithSchema(semaphoreServiceMethods.ByName("OpenSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	semaphoreServiceAcknowledgeSessionHandler := connect.NewUnaryHandler(
+		SemaphoreServiceAcknowledgeSessionProcedure,
+		svc.AcknowledgeSession,
+		connect.WithSchema(semaphoreServiceMethods.ByName("AcknowledgeSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/pintle.v1.SemaphoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case SemaphoreServiceAcquireProcedure:
+			semaphoreServiceAcquireHandler.ServeHTTP(w, r)
+		case SemaphoreServiceCancelPendingProcedure:
+			semaphoreServiceCancelPendingHandler.ServeHTTP(w, r)
+		case SemaphoreServiceTryAcquireProcedure:
+			semaphoreServiceTryAcquireHandler.ServeHTTP(w, r)
+		case SemaphoreServiceRenewProcedure:
+			semaphoreServiceRenewHandler.ServeHTTP(w, r)
+		case SemaphoreServiceReleaseProcedure:
+			semaphoreServiceReleaseHandler.ServeHTTP(w, r)
+		case SemaphoreServiceGetRequestStatusProcedure:
+			semaphoreServiceGetRequestStatusHandler.ServeHTTP(w, r)
+		case SemaphoreServiceOpenSessionProcedure:
+			semaphoreServiceOpenSessionHandler.ServeHTTP(w, r)
+		case SemaphoreServiceAcknowledgeSessionProcedure:
+			semaphoreServiceAcknowledgeSessionHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedSemaphoreServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedSemaphoreServiceHandler struct{}
+
+func (UnimplementedSemaphoreServiceHandler) Acquire(context.Context, *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.Acquire is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) CancelPending(context.Context, *connect.Request[v1.CancelPendingRequest]) (*connect.Response[v1.CancelPendingResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.CancelPending is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) TryAcquire(context.Context, *connect.Request[v1.TryAcquireRequest]) (*connect.Response[v1.TryAcquireResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.TryAcquire is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) Renew(context.Context, *connect.Request[v1.RenewRequest]) (*connect.Response[v1.RenewResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.Renew is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) Release(context.Context, *connect.Request[v1.ReleaseRequest]) (*connect.Response[v1.ReleaseResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.Release is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) GetRequestStatus(context.Context, *connect.Request[v1.GetRequestStatusRequest]) (*connect.Response[v1.GetRequestStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.GetRequestStatus is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) OpenSession(context.Context, *connect.Request[v1.OpenSessionRequest]) (*connect.Response[v1.OpenSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.OpenSession is not implemented"))
+}
+
+func (UnimplementedSemaphoreServiceHandler) AcknowledgeSession(context.Context, *connect.Request[v1.AcknowledgeSessionRequest]) (*connect.Response[v1.AcknowledgeSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("pintle.v1.SemaphoreService.AcknowledgeSession is not implemented"))
 }

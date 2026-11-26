@@ -46,12 +46,12 @@ func (c *Client) OpenSession(ctx context.Context, r Resource) (*Session, error) 
 		return nil, err
 	}
 	s := &Session{client: c, resource: r, next: 1}
-	if err = s.update(res.Msg.Session); err != nil {
+	if err = s.update(res.Msg.Session, 0); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
-func (s *Session) update(i *v1.RecoverySession) error {
+func (s *Session) update(i *v1.RecoverySession, minimumAck uint64) error {
 	if i == nil || i.RequestWindow < 2 || i.RequestWindow > 32 {
 		return fmt.Errorf("invalid recovery session")
 	}
@@ -62,6 +62,9 @@ func (s *Session) update(i *v1.RecoverySession) error {
 	ack, e := decimal(i.AcknowledgedThrough, false)
 	if e != nil {
 		return e
+	}
+	if ack < minimumAck {
+		return fmt.Errorf("acknowledgement did not reach the requested sequence")
 	}
 	expires, e := decimal(i.ExpiresAtUnixMs, true)
 	if e != nil || expires > maxAuthorityTime {
@@ -89,7 +92,7 @@ func (s *Session) Acknowledge(ctx context.Context, through uint64) error {
 	if err != nil {
 		return err
 	}
-	return s.update(res.Msg.Session)
+	return s.update(res.Msg.Session, through)
 }
 func (s *Session) Heartbeat(ctx context.Context) error {
 	s.mu.Lock()
@@ -119,11 +122,12 @@ func (s *Session) NewAcquire(holder string, duration time.Duration) (AcquireRequ
 	if err != nil {
 		return r, err
 	}
+	r.Capacity = s.client.capacity
 	r.Attempt, err = s.attempt(false)
 	return r, err
 }
 func (s *Session) NewRenew(l Lease, duration time.Duration) (RenewRequest, error) {
-	if l.Resource != s.resource {
+	if l.Resource != s.resource || l.Capacity != s.client.capacity {
 		return RenewRequest{}, fmt.Errorf("lease belongs to another resource")
 	}
 	if _, err := ttl(duration); err != nil {
@@ -137,7 +141,7 @@ func (s *Session) NewRenew(l Lease, duration time.Duration) (RenewRequest, error
 	return r, err
 }
 func (s *Session) NewRelease(l Lease) (ReleaseRequest, error) {
-	if l.Resource != s.resource {
+	if l.Resource != s.resource || l.Capacity != s.client.capacity {
 		return ReleaseRequest{}, fmt.Errorf("lease belongs to another resource")
 	}
 	r, err := NewRelease(l)
@@ -160,6 +164,9 @@ func (s *Session) Status(ctx context.Context, id string, a *Attempt) (*Status, e
 // AcknowledgeAttempt supports recovery from a saved request after a client
 // restart. Call only after safely consuming all results through its sequence.
 func (c *Client) AcknowledgeAttempt(ctx context.Context, r Resource, a Attempt) error {
-	_, err := c.rpc.AcknowledgeSession(ctx, authorize(c, &v1.AcknowledgeSessionRequest{Resource: resource(r), SessionId: a.SessionID, AcknowledgedThrough: strconv.FormatUint(a.Sequence, 10)}))
-	return err
+	if _, err := decimal(a.SessionID, true); err != nil {
+		return err
+	}
+	s := &Session{client: c, resource: r, id: a.SessionID}
+	return s.Acknowledge(ctx, a.Sequence)
 }

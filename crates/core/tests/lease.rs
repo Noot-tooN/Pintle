@@ -187,14 +187,16 @@ fn limits_overflow_and_release_reservation() {
     }
     for field in ["fence", "revision"] {
         let mut s = Store::default();
+        s.rows.insert("owner".into(), "null".into());
         s.rows.insert(field.into(), u64::MAX.to_string());
         reject(
             run(&mut s, "alice", &acquire("a", 100), 1000, 1),
             Rejection::Exhausted,
         );
-        assert!(!s.rows.contains_key("owner"));
+        assert_eq!(s.rows["owner"], "null");
     }
     let mut s = Store::default();
+    s.rows.insert("owner".into(), "null".into());
     s.rows
         .insert("fence".into(), ((1u64 << 53) + 1).to_string());
     assert_eq!(
@@ -323,6 +325,7 @@ impl Reference {
             };
         }
         let mutation = match cmd {
+            Command::AcquirePermit { .. } => panic!("mutex model"),
             Command::Status { .. } => return Reply::Rejected(Rejection::NotFound),
             Command::Acquire { id, holder, ttl_ms } => {
                 if self
@@ -335,6 +338,7 @@ impl Reference {
                 self.fence += 1;
                 self.revision += 1;
                 let l = Lease {
+                    permit: None,
                     acquisition_id: id.clone(),
                     subject: subject.into(),
                     holder: holder.clone(),
@@ -536,4 +540,26 @@ fn time_overflow_and_corrupt_persisted_leases_fail_closed() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn missing_owner_after_a_grant_fails_closed() {
+    let mut s = Store::default();
+    let first = lease(run(&mut s, "alice", &acquire("a", 100), 1000, 1));
+    let mut damaged = s.clone();
+    damaged.rows.remove("owner").unwrap();
+    let before = damaged.rows.clone();
+    let next = acquire("b", 100);
+    assert!(execute(&mut damaged, "bob", &next, 1001, &token(2)).is_err());
+    assert_eq!(damaged.rows, before);
+
+    applied(run(
+        &mut s,
+        "alice",
+        &release("release", &first.token),
+        1001,
+        3,
+    ));
+    assert_eq!(s.rows["owner"], "null");
+    assert_eq!(lease(run(&mut s, "bob", &next, 1001, 2)).fence, "2");
 }

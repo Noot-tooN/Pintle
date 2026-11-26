@@ -9,6 +9,9 @@ pub struct ResourceId {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TryAcquireRequest {
+    /// Required (1..64) on SemaphoreService; must be zero on LockService.
+    #[prost(uint32, tag = "6")]
+    pub semaphore_capacity: u32,
     #[prost(message, optional, tag = "1")]
     pub resource: ::core::option::Option<ResourceId>,
     #[prost(string, tag = "2")]
@@ -45,6 +48,11 @@ pub mod try_acquire_response {
 /// Immutable operation receipt. Consult observation for current lease validity.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GrantReceipt {
+    /// Both zero for mutexes. Fencing on semaphores is scoped to resource + slot.
+    #[prost(uint32, tag = "8")]
+    pub permit_slot: u32,
+    #[prost(uint32, tag = "9")]
+    pub semaphore_capacity: u32,
     #[prost(message, optional, tag = "1")]
     pub resource: ::core::option::Option<ResourceId>,
     /// Original acquisition ID, including in a Renew receipt. Renew's own request

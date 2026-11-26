@@ -10,6 +10,8 @@ use wasm_bindgen::prelude::*;
 use worker::*;
 
 const PREFIX: &str = "/pintle.v1.LockService/";
+const SEMAPHORE_PREFIX: &str = "/pintle.v1.SemaphoreService/";
+const SEMAPHORE_INTERNAL: &str = "/internal/semaphore/";
 const INTERNAL: &str = "/internal/p1/";
 #[wasm_bindgen]
 extern "C" {
@@ -34,7 +36,7 @@ pub fn sessions_enabled(env: &Env) -> bool {
             .is_ok_and(|v| v.to_string() == "true")
 }
 pub fn is_internal(req: &Request) -> bool {
-    req.path().starts_with(INTERNAL)
+    req.path().starts_with(INTERNAL) || req.path().starts_with(SEMAPHORE_INTERNAL)
 }
 #[derive(Clone, Copy)]
 enum WaitKind {
@@ -74,7 +76,7 @@ struct Input {
     resource: ResourceId,
     operation: Operation,
 }
-fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
+fn decode(method: &str, bytes: &[u8], semaphore: bool) -> RpcResult<Input> {
     let (resource, operation) = match method {
         "Acquire" | "CancelPending" => {
             let (r, kind) = if method == "CancelPending" {
@@ -95,13 +97,9 @@ fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
                 .acquisition
                 .ok_or_else(|| invalid("acquisition required"))?;
             (
-                a.resource,
+                a.resource.clone(),
                 Operation::Wait {
-                    command: Command::Acquire {
-                        id: a.request_id,
-                        holder: a.holder_ref,
-                        ttl_ms: a.lease_ttl_ms.into(),
-                    },
+                    command: acquisition(&a, semaphore)?,
                     attempt: frame(a.attempt)?,
                     duration: u64::from(r.wait_timeout_ms),
                     kind,
@@ -111,13 +109,9 @@ fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
         "TryAcquire" => {
             let r = TryAcquireRequest::decode(bytes).map_err(|_| invalid("malformed protobuf"))?;
             (
-                r.resource,
+                r.resource.clone(),
                 Operation::Execute {
-                    command: Command::Acquire {
-                        id: r.request_id,
-                        holder: r.holder_ref,
-                        ttl_ms: r.lease_ttl_ms.into(),
-                    },
+                    command: acquisition(&r, semaphore)?,
                     attempt: frame(r.attempt)?,
                 },
             )
@@ -190,6 +184,28 @@ fn decode(method: &str, bytes: &[u8]) -> RpcResult<Input> {
         operation,
     })
 }
+fn acquisition(r: &TryAcquireRequest, semaphore: bool) -> RpcResult<Command> {
+    if semaphore {
+        if !(1..=pintle_core::semaphore::MAX_CAPACITY).contains(&r.semaphore_capacity) {
+            return Err(invalid("semaphore capacity must be in 1..64"));
+        }
+        Ok(Command::AcquirePermit {
+            id: r.request_id.clone(),
+            holder: r.holder_ref.clone(),
+            ttl_ms: r.lease_ttl_ms.into(),
+            capacity: r.semaphore_capacity,
+        })
+    } else {
+        if r.semaphore_capacity != 0 {
+            return Err(invalid("mutex must not specify semaphore capacity"));
+        }
+        Ok(Command::Acquire {
+            id: r.request_id.clone(),
+            holder: r.holder_ref.clone(),
+            ttl_ms: r.lease_ttl_ms.into(),
+        })
+    }
+}
 fn decimal(s: &str) -> RpcResult<u64> {
     pintle_core::counter(s).map_err(|_| invalid("invalid decimal counter"))
 }
@@ -223,8 +239,12 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
             return Err(unavailable());
         }
         let path = req.path();
+        let semaphore = path.starts_with(SEMAPHORE_PREFIX);
+        if semaphore && !waiting_enabled(env) {
+            return Err(unavailable());
+        }
         let method = path
-            .strip_prefix(PREFIX)
+            .strip_prefix(if semaphore { SEMAPHORE_PREFIX } else { PREFIX })
             .ok_or_else(|| RpcError::new("unimplemented", "unknown RPC", 501))?;
         if !matches!(
             method,
@@ -255,7 +275,7 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
             check_deadline(schedule.now(), deadline)?;
             let credential = authenticate(&req, env, schedule.now())?;
             let bytes = body(&mut req).await?;
-            let input = decode(method, &bytes)?;
+            let input = decode(method, &bytes, semaphore)?;
             if !credential.namespaces.contains(&input.resource.namespace) {
                 return Err(RpcError::new(
                     "permission_denied",
@@ -271,7 +291,11 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
             let name = serde_json::to_string(&(
                 &credential.tenant,
                 &input.resource.namespace,
-                "mutex-v1",
+                if semaphore {
+                    "semaphore-v1"
+                } else {
+                    "mutex-v1"
+                },
                 &input.resource.key,
             ))
             .map_err(|_| unavailable())?;
@@ -296,8 +320,13 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
                 .with_body(Some(JsValue::from(js_sys::Uint8Array::from(
                     bytes.as_slice(),
                 ))));
+            let internal_prefix = if semaphore {
+                SEMAPHORE_INTERNAL
+            } else {
+                INTERNAL
+            };
             let internal = Request::new_with_init(
-                &format!("https://authority.internal{INTERNAL}{method}"),
+                &format!("https://authority.internal{internal_prefix}{method}"),
                 &init,
             )
             .map_err(|_| unavailable())?;
@@ -344,6 +373,11 @@ fn rejection(r: Rejection) -> RpcError {
             "request_id reused with different operation or parameters",
             409,
         ),
+        Rejection::CapacityMismatch => RpcError::new(
+            "failed_precondition",
+            "semaphore capacity differs from configured capacity",
+            400,
+        ),
         Rejection::NotOwner => {
             RpcError::new("permission_denied", "not the current lease owner", 403)
         }
@@ -374,6 +408,8 @@ fn rejection(r: Rejection) -> RpcError {
 }
 fn wire_lease(l: lease::Lease, resource: &ResourceId) -> GrantReceipt {
     GrantReceipt {
+        permit_slot: l.permit.as_ref().map_or(0, |p| p.slot),
+        semaphore_capacity: l.permit.as_ref().map_or(0, |p| p.capacity),
         resource: Some(resource.clone()),
         request_id: l.acquisition_id,
         holder_ref: l.holder,
@@ -517,8 +553,18 @@ pub async fn authority(
             .ok_or_else(unavailable)?;
         check_deadline(schedule.now(), deadline)?;
         let path = req.path();
-        let method = path.strip_prefix(INTERNAL).ok_or_else(unavailable)?;
-        let input = decode(method, &body(&mut req).await?)?;
+        let semaphore = path.starts_with(SEMAPHORE_INTERNAL);
+        if semaphore && !waiting_enabled(env) {
+            return Err(unavailable());
+        }
+        let method = path
+            .strip_prefix(if semaphore {
+                SEMAPHORE_INTERNAL
+            } else {
+                INTERNAL
+            })
+            .ok_or_else(unavailable)?;
+        let input = decode(method, &body(&mut req).await?, semaphore)?;
         let use_sessions = sessions_enabled(env);
         if !input.operation.accepts_session_mode(use_sessions) {
             return Err(invalid(
@@ -574,6 +620,11 @@ pub async fn authority(
                 fault,
                 writes: 0,
             };
+            if semaphore {
+                pintle_core::semaphore::initialize(&mut tx)?;
+            } else if pintle_core::semaphore::is_semaphore(&tx)? {
+                return Err("primitive mismatch".into());
+            }
             let result = if use_waiting {
                 let action = match &operation {
                     Operation::Wait {
@@ -597,7 +648,9 @@ pub async fn authority(
                         command,
                     },
                 };
-                waiting::apply(&mut tx, &subject, action, clock.now(), &nonce)?
+                waiting::apply_with_tokens(&mut tx, &subject, action, clock.now(), &mut || {
+                    new_token().map_err(|e| e.to_string())
+                })?
             } else if use_sessions {
                 match &operation {
                     Operation::OpenSession => session::open(&mut tx, &subject, clock.now())?,
@@ -811,7 +864,6 @@ async fn alarm_inner(
     )?;
     let clock = schedule.clone();
     let use_waiting = waiting_enabled(env);
-    let nonce = new_token()?;
     let result = atomic(&storage, move || {
         let mut tx = SqlTransaction {
             sql,
@@ -819,7 +871,9 @@ async fn alarm_inner(
             writes: 0,
         };
         let result = if use_waiting {
-            waiting::drive(&mut tx, clock.now(), &nonce)?
+            waiting::drive_with_tokens(&mut tx, clock.now(), &mut || {
+                new_token().map_err(|e| e.to_string())
+            })?
         } else {
             session::cleanup(&mut tx, clock.now())?
         };

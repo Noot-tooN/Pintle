@@ -7,7 +7,7 @@ import (
 )
 
 func TestSessionConcurrentAllocationAndReleaseReservation(t *testing.T) {
-	s := &Session{id: "1", resource: Resource{"test", "key"}, next: 1, window: 32}
+	s := &Session{client: &Client{}, id: "1", resource: Resource{"test", "key"}, next: 1, window: 32}
 	if _, err := s.NewAcquire("worker", 0); err == nil {
 		t.Fatal("invalid TTL consumed a sequence")
 	}

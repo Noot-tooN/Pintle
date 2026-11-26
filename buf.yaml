@@ -3,5 +3,8 @@ modules:
   - path: proto
 lint:
   use: [STANDARD]
+  # Both coordination services deliberately share the recovery/lease envelopes.
+  ignore_only:
+    RPC_REQUEST_RESPONSE_UNIQUE: [proto/pintle/v1/lock.proto]
 breaking:
   use: [FILE]

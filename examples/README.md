@@ -53,3 +53,23 @@ A real database/service must enforce the same check atomically with each write.
 Do not infer ownership from client wall time, an old receipt or an open
 Lost channel. See the [SDK guide](../sdk/go/pintle/README.md) for errors, deadlines,
 crash recovery requirements and the exact scope of these examples.
+
+## Semaphore: a bounded render pool
+
+[`semaphore/main.go`](semaphore/main.go) runs six cooperative jobs through a
+capacity-two semaphore. It uses WithPermit for automatic renewal, cancellation,
+release and recovery cleanup. Channels demonstrate two simultaneous callbacks;
+there are no sleeps deciding admission. All jobs and cleanup are joined.
+
+Use the same endpoint/token/namespace environment as the mutex examples:
+
+```sh
+./bin/just example-semaphore
+```
+
+Or run `./bin/just example-local` to build and execute both examples against an
+automatically managed local Wrangler. The package-consumer check builds both
+examples outside this repository's module. No extra dependency or database is
+needed. This example performs disposable work; irreversible external actions
+require an appropriate destination protocol. Optional semaphore fencing is per
+resource and permit slot. Capacity cannot be resized after the first grant.

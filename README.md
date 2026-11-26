@@ -2,10 +2,16 @@
 
 An open-source distributed coordination platform with a portable Rust core.
 
-**Current status: P3 local hardening, hosted lifecycle checks and a bounded resilience/capacity pass; release gates remain open.** The portable Rust core implements
+**Current status: P4 semaphore development on top of P3 mutex hardening; production gates remain open.** The portable Rust core implements
 server-owned FIFO Acquire, TryAcquire, Renew, Release, cancellation, and request-status
 recovery. A generated Go Connect client and [Go SDK](sdk/go/pintle/client.go) call the compiled Rust/Wasm
 Worker and Durable Object backed by SQLite. The schema is unpublished.
+
+The semaphore adds fixed capacity (1..64), expiring permits, the same server-owned
+FIFO/recovery lifecycle, and Go `WithPermit` with automatic renewal/cancellation.
+See [P4 semantics and local evidence](docs/p4-semaphore-results.md) and the
+[runnable semaphore example](examples/semaphore/main.go). Hosted P3 results do not
+constitute hosted validation of this new primitive.
 
 Wait registration, cancellation/grant races, lease expiry, renewal/release races,
 replay, rollback, and restart are exercised with controlled logical time and transaction/response ordering. See
@@ -43,7 +49,7 @@ After `source ./bin/activate-hermit`, use `just` directly from any subdirectory.
 | `./bin/just test-core` | Native Rust core/auth tests |
 | `./bin/just test-sdk` | Go SDK unit tests with the race detector |
 | `./bin/just check-sdk-package` | Build the example from an independent Go consumer module |
-| `./bin/just example-local` | Run lifecycle, cancellation and recovery examples against local Wrangler |
+| `./bin/just example-local` | Run mutex and semaphore examples against local Wrangler |
 | `./bin/just test-runtime` | Build normal Wasm and test real local Wrangler |
 | `./bin/just test-hardening` | Instrumented deterministic tests; restore normal Wasm |
 | `./bin/just test` | Complete local suite, sequentially |

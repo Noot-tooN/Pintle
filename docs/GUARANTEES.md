@@ -131,3 +131,17 @@ Lost is not proof of ownership or immediate revocation; static key expiry/remova
 not cancel already admitted durable intent. Subsequent [hosted resilience/capacity
 evidence](staging-capacity-results.md) covers a bounded subset; it does not establish
 general hosted availability or production readiness.
+
+## P4 semaphore scope
+
+[ADR-021](adr/ADR-021-unweighted-semaphore.md) and [local evidence](p4-semaphore-results.md)
+extend the continuous-authority/clock model to unweighted semaphores. At most the
+configured capacity of unexpired permits exists in a resource authority, with at
+most one owner per slot. All grants share one atomic Rust transition and server
+FIFO queue. Renewal/release affects only the authenticated permit. Distinct
+concurrent permits remain valid even when another slot has a larger fence.
+
+Optional downstream fencing is scoped to primitive/resource/slot. A semaphore
+bounds valid permits, not work continuing outside Pintle after expiry. Cooperative
+context cancellation and slot-scoped destination checks retain their separate
+limits. Hosted mutex evidence is not evidence of hosted semaphore behavior.

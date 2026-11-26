@@ -110,9 +110,13 @@ isolation, authorization and per-resource safety limits. OSS supplies telemetry
 and runbooks; each deployment operator configures alerts and workload protection.
 See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
 
-## P4 — Additional helpers (later only)
+## P4 — Additional helpers (semaphore development started)
 
-- Semaphore; singleflight; cooldown; rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
+- Semaphore implemented locally: see [P4 results](p4-semaphore-results.md) and
+  [ADR-021](adr/ADR-021-unweighted-semaphore.md). Fixed capacity 1..64, one permit
+  per grant, existing recovery/FIFO lifecycle, Go WithPermit and executable example.
+  Hosted semaphore validation and review remain; no publication/deployment implied.
+- Remaining helpers: singleflight; cooldown; rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
 - Validate *true* portability using a native Rust + FDB/etcd backend; do not build a large generic backend framework for hypothetical capabilities.
 
 The P4 rate-limit/quota primitives are coordination features for applications,
