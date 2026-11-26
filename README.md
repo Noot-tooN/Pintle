@@ -21,6 +21,45 @@ capacity. Explicit acknowledgements reclaim results; Durable Object alarms recla
 expired sessions while retaining fencing history. Hosted clock/failover validation
 remains open. This is not production-ready.
 
+## Using the lock and semaphore from Go
+
+From a checkout, run `./bin/just bootstrap` once, then `./bin/just example-local`.
+This starts a local Pintle server and runs both examples with temporary credentials.
+In your application, create a client with `pintle.New(endpoint, token, nil)` and
+check the returned error. The snippets below use that client and a caller-supplied
+`ctx`. The inventory and rendering functions are application code.
+
+**Lock an inventory record.** All writers for this product use the same resource
+key. The inventory store checks the fence in the same operation that updates
+the stock count. [Runnable mutex example](examples/mutex/main.go)
+
+```go
+product := pintle.Resource{Namespace: "inventory", Key: "blue-shirt"}
+return client.WithLease(ctx, product, pintle.LeaseOptions{}, func(work context.Context, lease pintle.Lease) error {
+    return inventory.SaveIfCurrent(work, product, lease.FencingToken, 8)
+})
+```
+
+**Share two render permits across workers.** Each worker uses the same pool key
+and capacity. The callback renders a disposable cache candidate and honors
+cancellation. The runnable example starts six jobs and waits for two to enter
+together. [Runnable semaphore example](examples/semaphore/main.go)
+
+```go
+sem, err := client.Semaphore(2)
+if err != nil {
+    return err
+}
+pool := pintle.Resource{Namespace: "images", Key: "render-pool"}
+return sem.WithPermit(ctx, pool, pintle.LeaseOptions{}, func(work context.Context, _ pintle.Lease) error {
+    return renderCacheCandidate(work, imageID)
+})
+```
+
+Both helpers renew the grant while the callback runs and attempt release when
+it returns. Pass the callback's `work` context into the job so it can stop if
+ownership becomes uncertain. [Go SDK guide](sdk/go/pintle/README.md)
+
 ## Protecting writes after a lease expires
 
 A worker can pause, lose its lock or semaphore permit, and resume after Pintle
