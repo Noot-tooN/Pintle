@@ -2,6 +2,7 @@
 pub mod lease;
 pub mod semaphore;
 pub mod session;
+pub mod singleflight;
 
 /// Provisional synchronous, single-authority transaction view. Implementations
 /// must roll back all writes when the callback returns an error. No awaits here.
