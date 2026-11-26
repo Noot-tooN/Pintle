@@ -103,6 +103,7 @@ test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|T
 
 # Run the complete local verification suite, sequentially against shared Wasm artifacts.
 test:
+    ./bin/node --test tools/staging-invocations.test.mjs
     ./bin/just check
     ./bin/just check-sdk-package
     ./bin/just test-core
@@ -255,6 +256,7 @@ staging-origin: staging-account
 staging-capacity-metrics: staging-check
     ./bin/node --input-type=module <<'JS'
     import {readFileSync,writeFileSync,statSync} from 'node:fs';
+    import {InvocationCollector} from './tools/staging-invocations.mjs';
     const run=JSON.parse(readFileSync('test-results/staging-capacity.json','utf8'));
     const account=process.env.CLOUDFLARE_ACCOUNT_ID;
     if(!/^[a-f0-9]{32}$/.test(account||'')) throw Error('Explicit account required');
@@ -265,7 +267,7 @@ staging-capacity-metrics: staging-check
     if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from||to-from>361000) throw Error('Invalid bounded run window');
     const filter=(key,value)=>({key,operation:'eq',type:'string',value});
     const body={queryId:'pintle-capacity-metrics',dry:true,view:'events',limit:2000,timeframe:{from,to},parameters:{filters:[filter('$metadata.service','pintle-staging'),filter('$metadata.type','cf-worker-event')]}};
-    const collected=new Map();let events=[],queries=0;
+    const collector=new InvocationCollector();let queries=0;
     for(;queries<12;){
       queries++;
       const res=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/workers/observability/telemetry/query`,{method:'POST',redirect:'error',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
@@ -275,29 +277,13 @@ staging-capacity-metrics: staging-check
       let data;try{data=JSON.parse(Buffer.concat(chunks).toString());}catch{throw Error('Invalid telemetry response');}
       if(!data.success||!data.result?.events) throw Error('Telemetry API rejected query');
       if(data.result.events.count>=2000) throw Error('Telemetry window truncated');
-      for(const e of data.result.events.events??[]){
-        if(e.$metadata?.service!=='pintle-staging'||e.$metadata?.type!=='cf-worker-event'||!e.$metadata.id)throw Error('Unexpected telemetry source');
-        collected.set(e.$metadata.id,e);
-      }
-      if(collected.size>=2000)throw Error('Telemetry union exceeds event budget');
-      events=[...collected.values()];
-      const gateways=events.filter(e=>e.$workers?.entrypoint!=='PintleAuthority').length;
-      if(gateways>=run.rpc_sent)break;
+      collector.add(data.result.events.events??[]);
+      if(collector.gatewayCount>=run.rpc_sent)break;
       if(queries<12) await new Promise(r=>setTimeout(r,5000));
     }
-    const groups={};
-    for(const e of events){
-      const w=e.$workers??{};
-      if(w.truncated)throw Error('Truncated invocation event');
-      const method=['Acquire','TryAcquire','Renew','Release','OpenSession','AcknowledgeSession','GetRequestStatus','CancelPending'].find(m=>w.event?.request?.url?.endsWith('/'+m))??'other';
-      const kind=w.entrypoint==='PintleAuthority'?'authority':'gateway';
-      const k=kind+'/'+(w.eventType==='alarm'?'alarm':method);
-      const g=groups[k]??={events:0,cpu:[],wall:[],outcomes:{}};g.events++;
-      for(const [field,list] of [['cpuTimeMs','cpu'],['wallTimeMs','wall']]){if(typeof w[field]==='number'&&Number.isFinite(w[field])&&w[field]>=0)g[list].push(w[field]);}
-      const outcome=['ok','canceled','exception','exceededCpu','exceededMemory'].includes(w.outcome)?w.outcome:'other';g.outcomes[outcome]=(g.outcomes[outcome]??0)+1;
-    }
-    function summary(a){a.sort((a,b)=>a-b);if(!a.length)return {samples:0};const q=p=>a[Math.ceil(a.length*p)-1];return {samples:a.length,sum_ms:a.reduce((a,b)=>a+b,0),p50_ms:q(.5),p95_ms:q(.95),p99_ms:q(.99),max_ms:a.at(-1)};}
-    const report={started_at:run.started_at,finished_at:run.finished_at,queries,observed_gateway_events:events.filter(e=>e.$workers?.entrypoint!=='PintleAuthority').length,expected_client_sends:run.rpc_sent,scope:'persisted invocation CPU/wall time, not billed duration or SQL usage',groups:Object.fromEntries(Object.entries(groups).map(([k,g])=>[k,{events:g.events,cpu:summary(g.cpu),wall:summary(g.wall),outcomes:g.outcomes}]))};
+    const report={started_at:run.started_at,finished_at:run.finished_at,queries,
+      expected_client_sends:run.rpc_sent,scope:'persisted invocation CPU/wall time, not billed duration or SQL usage',
+      ...collector.report()};
     writeFileSync('test-results/staging-capacity-metrics.json',JSON.stringify(report,null,2)+'\n',{mode:0o600});
     console.log(JSON.stringify(report,null,2));
     JS

@@ -280,10 +280,21 @@ alarms. Six resource histories retain fencing metadata, with no destructive rese
 
 Metrics use the existing private observability token and a fixed run time window.
 Bounds are 12 dry management queries, five-second polling, 2,000 invocation events
-and 8 MiB per response. Only aggregate counts, CPU/wall statistics and allowlisted
+and 8 MiB per response. `observed_gateway_events` counts distinct gateway Ray
+IDs, including requests cancelled before a client receives a response.
+`observed_authority_invocations` counts observed Durable Object invocations
+separately, including alarms. The expected client sends apply only to the gateway.
+Cloudflare log rows can share a metadata ID across distinct requests.
+Only aggregate counts, CPU/wall statistics and allowlisted
 outcomes are saved. Raw headers, URLs and credentials are discarded. Run with
 exclusive staging traffic: time-window counts alone cannot prove attribution.
 Incomplete ingestion is reported as incomplete evidence, never inferred billing
 or resource utilization. Results are private ignored JSON under `test-results/`.
+The November 26 verification replayed the two RC 2 staging windows through the
+collector. The lock window contained 389 gateway requests (388 client responses
+and one deliberately cancelled acquire) and 389 authority invocations. The
+semaphore window contained 133 of each. All 521 response Ray IDs matched.
+Replaying each export twice left both counts unchanged.
+
 See [ADR-017](adr/ADR-017-bounded-hosted-resilience-capacity.md) and
-[the measured results](staging-capacity-results.md).
+[the October measurements](staging-capacity-results.md).
