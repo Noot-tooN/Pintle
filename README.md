@@ -21,6 +21,32 @@ capacity. Explicit acknowledgements reclaim results; Durable Object alarms recla
 expired sessions while retaining fencing history. Hosted clock/failover validation
 remains open. This is not production-ready.
 
+## Protecting writes after a lease expires
+
+A worker can pause, lose its lock or semaphore permit, and resume after Pintle
+has granted it to someone else. Pintle issues a higher fencing token to the
+successor. A database or external service can still accept the old worker's
+write until it has recorded the successor's token. Checking the lease before
+sending a write leaves a gap in which ownership can change.
+
+Pass the grant's `FencingToken` with every protected write, including retries
+and background jobs. At the destination, compare it as an exact unsigned
+integer with the highest token already accepted. Reject a lower token. Record
+the accepted token and apply the write in one atomic operation. Keep that
+record across restarts and row deletion. Equal tokens allow a holder to make
+several writes, so operations that must run only once also need deduplication.
+
+- **Lock.** Keep one highest token per tenant, namespace and lock resource.
+- **Semaphore.** Track each permit slot separately, using the tenant, namespace,
+  semaphore resource and `PermitSlot`. A higher token in one slot must leave
+  the other slots usable. If several slots update the same business record,
+  that record still needs to handle concurrent writes.
+
+If the destination cannot condition an effect on the token, a stale holder can
+still cause that effect. The [PostgreSQL integration test](tests/integration/downstream_fencing_test.go)
+shows the conditional write and exercises a late holder for both primitives.
+See the [observed handoffs and reproduction steps](docs/TEST_PLAN.md#downstream-fencing).
+
 ## Run locally
 
 macOS or Linux, with Git, a native linker/build toolchain, Bash, and network access

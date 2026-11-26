@@ -4,9 +4,40 @@
 
 1. **Pure-core Rust tests:** no internet, no database; deterministic injected logical time and operations; model-driven/property-based schedules.
 2. **Local Cloudflare tests:** Rust/Wasm under `wrangler dev`/Miniflare/workerd with SQLite-enabled DO; HTTP Go concurrency clients; simulated lost replies and worker restart. These validate local implementation, not hosted HA.
-3. **Real integration tests:** Go SDK + Worker/DO + (later) real PostgreSQL container for fenced writes.
+3. **Real integration tests:** Go SDK, local Worker/DO and a disposable PostgreSQL container for fenced writes.
 4. **Live Cloudflare staging:** hosted object lifecycle and scaling tests with user approval/credentials; test hibernation, alarms, actual network latency, errors and deployment replacement behavior.
 5. **Cross-backend conformance:** later, run the same externally observable operation matrix against FDB/etcd/native server; never pass a backend solely because it compiles.
+
+## Downstream fencing
+
+On 2026-11-27 the [integration test](../tests/integration/downstream_fencing_test.go)
+ran against the `rc-2026-11-27.1` release Wasm under local Wrangler and PostgreSQL
+17.12. Each write uses a new database connection. One SQL statement compares the
+incoming fence and changes the protected payload, keyed by tenant, namespace,
+primitive, resource and slot. A rejected write returns zero rows. The test then
+reads the stored fence and payload to check what persisted.
+
+| Case | Observed result |
+| --- | --- |
+| Lock handoff | Fence 2 wrote successfully. A late write with fence 1 changed zero rows and the successor's payload persisted. |
+| Semaphore handoff, capacity 2 | In slot 2, fence 3 replaced fence 2 and the old writer changed zero rows. Slot 1 could still update its own payload with fence 1. |
+| Expiry before the successor's first write | For both primitives, the old writer could update the row after Pintle granted the successor and before PostgreSQL saw the new fence. |
+
+To reproduce with Docker running, start a disposable database, wait for PostgreSQL
+startup to finish, then run the normal Wasm runtime test and stop the container.
+
+```sh
+docker run -d --rm --name pintle-fence-test --network none \
+  --tmpfs /var/lib/postgresql/data -e POSTGRES_HOST_AUTH_METHOD=trust \
+  postgres:17-alpine -c listen_addresses=''
+PINTLE_TEST_POSTGRES_CONTAINER=pintle-fence-test ./bin/just test-runtime '^TestDownstreamPostgresFencing$'
+docker stop pintle-fence-test
+```
+
+This verifies a PostgreSQL row guarded by the reference query. The pilot still
+needs the same handoff exercised through its own write path, including retries
+and background writers. A destination must retain its highest accepted fence
+across deletes, restarts and recovery for as long as a stale writer could return.
 
 ## First PR (P0) concrete matrix
 

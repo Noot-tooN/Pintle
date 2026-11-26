@@ -8,6 +8,20 @@ shipping the open-source core, server and Go SDK from operating a production
 deployment or launching a shared SaaS. Completing one does not approve the others.
 See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
 
+## Limited lock and semaphore pilot, 2026-11-27
+
+The maintainer accepted **RUSTSEC-2026-0543** for the limited pilot on
+`rc-2026-11-27.1`. The pilot is deferred. The follow-up test and documentation
+candidate, `rc-2026-11-27.2`, retains the same dependencies and warning.
+The original RC audit reported `chrono 0.4.45` through
+`worker 0.8.7`. Keep reporting the finding in the dependency audit. Revisit
+the decision when an upstream fix is available or the deployment scope changes.
+
+The [PostgreSQL fencing test](TEST_PLAN.md#downstream-fencing) passed for both
+primitives on the RC runtime. The pilot application is still to be chosen.
+Its owner must identify the protected writes and verify that every writer uses
+the fence at the destination before approving the pilot.
+
 ## P3 OSS release requirements
 
 Checked items record existing evidence, not a new test run for this documentation
