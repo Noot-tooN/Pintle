@@ -31,7 +31,7 @@ toolchain and network access for the initial downloads.
 ```
 
 The first command installs the pinned tools. The second starts a local Worker,
-runs the lock and semaphore examples with temporary credentials, then stops it.
+runs the lock, semaphore and cooldown examples with temporary credentials, then stops it.
 The cache-fill integration test exercises singleflight locally.
 
 ```sh
@@ -163,6 +163,30 @@ Cooldown has been tested locally with Wrangler, including lost replies and
 process restarts. Enable it with `P2_ENABLED=true` and
 `PINTLE_COOLDOWN_ENABLED=true`.
 [Go SDK usage and recovery](sdk/go/pintle/README.md#keyed-cooldown) · [Contract and local tests](docs/adr/ADR-023-cooldown.md)
+
+### Go example — refresh a tenant’s search index
+
+Workers observing the same stale index use the same key. The application’s
+`RefreshIfStale` rechecks the source revision and conditionally publishes the
+built index. The worker that receives `CoolingDown` can use the returned time
+to schedule its next freshness check. [Runnable Go example](examples/cooldown/main.go)
+
+```go
+key := pintle.Resource{Namespace: "search", Key: "index/" + tenantID}
+decision, err := client.TryAdmit(ctx, key, 30*time.Second)
+if err != nil {
+    return err
+}
+switch decision.Status {
+case pintle.CooldownAdmitted:
+    return index.RefreshIfStale(ctx, tenantID)
+case pintle.CoolingDown:
+    return scheduler.CheckAt(ctx, tenantID, decision.RetryAt)
+case pintle.CooldownSuperseded:
+    return scheduler.RecheckFreshness(ctx, tenantID)
+}
+return fmt.Errorf("unknown cooldown status %v", decision.Status)
+```
 
 ## Protecting writes after a lease expires
 

@@ -1,4 +1,4 @@
-# Runnable Go mutex examples
+# Runnable Go examples
 
 From a bootstrapped checkout, run all examples against automatically managed
 **local** Wrangler:
@@ -67,9 +67,20 @@ Use the same endpoint/token/namespace environment as the mutex examples:
 ./bin/just example-semaphore
 ```
 
-Or run `./bin/just example-local` to build and execute both examples against an
-automatically managed local Wrangler. The package-consumer check builds both
+Or run `./bin/just example-local` to build and execute all examples against an
+automatically managed local Wrangler. The package-consumer check builds these
 examples outside this repository's module. No extra dependency or database is
 needed. This example performs disposable work; irreversible external actions
 require an appropriate destination protocol. Optional semaphore fencing is per
 resource and permit slot. Capacity cannot be resized after the first grant.
+
+## Cooldown for search-index refreshes
+
+Two workers notice that one tenant’s index is stale. The first publishes the
+new revision, and the second prints the authority’s retry time. The in-memory
+index checks the revision again when publishing so an older build can finish
+safely. [Go source](cooldown/main.go)
+
+Run `./bin/just example-local` for a self-contained demonstration. With your
+own configured endpoint, enable `P2_ENABLED=true` and
+`PINTLE_COOLDOWN_ENABLED=true` and run `./bin/just example-cooldown`.

@@ -352,6 +352,9 @@ debug redaction is not a general serialization guarantee.
 
 ## Keyed cooldown
 
+Run the [tenant search-index example](../../../examples/cooldown/main.go) locally with
+`./bin/just example-local`.
+
 Call `client.TryAdmit(ctx, resource, 30*time.Second)` when a tenant's search
 index appears stale. On `pintle.CooldownAdmitted`, recheck the desired revision
 and publish only if the index advances. A crash after admission consumes the

@@ -130,6 +130,8 @@ check-sdk-package:
     ./consumer -h
     cp "$project_dir/examples/semaphore/main.go" main.go
     "$project_dir/bin/go" build -mod=readonly -o semaphore-consumer .
+    cp "$project_dir/examples/cooldown/main.go" main.go
+    "$project_dir/bin/go" build -mod=readonly -o cooldown-consumer .
 
 # Run all example commands against an automatically managed local Wrangler.
 example-local:
@@ -142,6 +144,10 @@ example mode='lifecycle':
 # Run the semaphore example against an explicitly configured endpoint.
 example-semaphore:
     ./bin/go run ./examples/semaphore
+
+# Run the cooldown example against an explicitly configured endpoint.
+example-cooldown:
+    ./bin/go run ./examples/cooldown
 
 # Query online npm and Rust/Go advisory databases; separate from correctness tests.
 audit:
