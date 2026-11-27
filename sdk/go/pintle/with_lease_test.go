@@ -242,8 +242,7 @@ func TestWithLeaseCallbackOutcomesAndPanic(t *testing.T) {
 func TestWithLeaseLossCancelsButWaitsForCallback(t *testing.T) {
 	f := &leaseRPC{}
 	c := leaseTestClient(f)
-	ticks := make(chan struct{})
-	waiting := make(chan struct{})
+	callbackStarted := make(chan struct{})
 	stopped := make(chan struct{})
 	finish := make(chan struct{})
 	f.renewHook = func(_ context.Context, n int) error {
@@ -254,12 +253,7 @@ func TestWithLeaseLossCancelsButWaitsForCallback(t *testing.T) {
 	}
 	wait := func(ctx context.Context, _ time.Duration) error {
 		select {
-		case waiting <- struct{}{}:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-		select {
-		case <-ticks:
+		case <-callbackStarted:
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -268,6 +262,7 @@ func TestWithLeaseLossCancelsButWaitsForCallback(t *testing.T) {
 	result := make(chan error, 1)
 	go func() {
 		result <- callLease(c, context.Background(), func(work context.Context, _ Lease) error {
+			close(callbackStarted)
 			<-work.Done()
 			if !errors.Is(context.Cause(work), ErrLeaseUncertain) {
 				t.Error("missing loss cause")
@@ -277,8 +272,6 @@ func TestWithLeaseLossCancelsButWaitsForCallback(t *testing.T) {
 			return nil
 		}, wait)
 	}()
-	receive(t, waiting)
-	ticks <- struct{}{}
 	receive(t, stopped)
 	f.mu.Lock()
 	releases := f.releases
