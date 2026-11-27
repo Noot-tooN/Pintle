@@ -8,12 +8,21 @@ import (
 // MaxSemaphoreCapacity bounds authoritative slot storage and work per mutation.
 const MaxSemaphoreCapacity uint32 = 64
 
-// Semaphore returns a client bound to the semaphore service and expected
-// capacity (1..64). Keep and reuse it, including for recovery. The first
-// successful grant fixes each resource's capacity; mismatches fail explicitly.
+// SemaphoreOptions configures the pool used by a semaphore client.
+type SemaphoreOptions struct {
+	// Capacity is the total number of permits for each resource (1..64).
+	// Each acquisition takes one permit. The first grant fixes the resource's capacity.
+	Capacity uint32
+}
+
+// Semaphore returns a reusable client for pools with the given capacity.
+// Creating the client makes no network request. Acquiring a permit on a
+// resource with a different established capacity returns an error.
 // Mutex and semaphore resource names occupy separate coordination namespaces.
-// The returned client supports the same session, acquisition and lease methods.
-func (c *Client) Semaphore(capacity uint32) (*Client, error) {
+// The returned client's session, acquisition and lease methods operate on permits.
+// Use WithPermit for scoped work and keep the original client for exclusive locks.
+func (c *Client) Semaphore(options SemaphoreOptions) (*Client, error) {
+	capacity := options.Capacity
 	if capacity == 0 || capacity > MaxSemaphoreCapacity {
 		return nil, fmt.Errorf("semaphore capacity must be in 1..64")
 	}

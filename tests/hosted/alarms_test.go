@@ -215,7 +215,7 @@ func TestStagingAlarms(t *testing.T) {
 	defer func() {
 		t.Logf("Bounded usage: %d client RPC attempts (cap 96), %d log queries (cap 90), one resource", wire.calls.Load(), q.calls)
 	}()
-	c, e := pintle.New(os.Getenv("PINTLE_STAGING_URL"), keys[0].Token, &http.Client{Timeout: 15 * time.Second, Transport: wire, CheckRedirect: noRedirect})
+	c, e := pintle.NewWithHTTPClient(os.Getenv("PINTLE_STAGING_URL"), keys[0].Token, &http.Client{Timeout: 15 * time.Second, Transport: wire, CheckRedirect: noRedirect})
 	require(t, e)
 	id, e := pintle.NewRequestID()
 	require(t, e)
@@ -227,7 +227,7 @@ func TestStagingAlarms(t *testing.T) {
 	g, e := c.TryAcquire(ctx, owner)
 	require(t, e)
 	active(t, g)
-	wait, e := s.NewWaitAcquire("alarm-successor", time.Minute, time.Minute)
+	wait, e := s.NewWaitAcquire("alarm-successor", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 	require(t, e)
 	pending, e := c.ResumeAcquire(ctx, wait)
 	require(t, e)

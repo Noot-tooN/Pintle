@@ -20,11 +20,13 @@ func main() {
 	}
 }
 func run(ctx context.Context) error {
-	c, err := pintle.New(os.Getenv("PINTLE_ENDPOINT"), os.Getenv("PINTLE_TOKEN"), nil)
+	c, err := pintle.New(os.Getenv("PINTLE_ENDPOINT"), os.Getenv("PINTLE_TOKEN"))
 	if err != nil {
 		return err
 	}
-	sem, err := c.Semaphore(2)
+	const poolCapacity = 2
+	const jobs = 6
+	sem, err := c.Semaphore(pintle.SemaphoreOptions{Capacity: poolCapacity})
 	if err != nil {
 		return err
 	}
@@ -39,16 +41,16 @@ func run(ctx context.Context) error {
 	resource := pintle.Resource{Namespace: namespace, Key: "render-pool-" + id}
 	// Six jobs share two permits. Channels hold the first two callbacks until
 	// both have entered; there are no sleeps deciding admission or overlap.
-	entered := make(chan struct{}, 6)
+	entered := make(chan struct{}, jobs)
 	finish := make(chan struct{})
-	results := make(chan error, 6)
+	results := make(chan error, jobs)
 	var active atomic.Int32
-	for range 6 {
+	for range jobs {
 		go func() {
 			results <- sem.WithPermit(ctx, resource, pintle.LeaseOptions{}, func(work context.Context, p pintle.Lease) error {
 				n := active.Add(1)
 				defer active.Add(-1)
-				if n > 2 || p.Capacity != 2 || p.PermitSlot < 1 || p.PermitSlot > 2 {
+				if n > poolCapacity || p.Capacity != poolCapacity || p.PermitSlot < 1 || p.PermitSlot > poolCapacity {
 					return fmt.Errorf("invalid permit admission")
 				}
 				entered <- struct{}{}
@@ -65,7 +67,7 @@ func run(ctx context.Context) error {
 		}()
 	}
 	var first error
-	for range 2 {
+	for range poolCapacity {
 		select {
 		case <-entered:
 		case <-ctx.Done():
@@ -74,7 +76,7 @@ func run(ctx context.Context) error {
 	}
 	close(finish)
 	// Join every callback and its bounded SDK cleanup before exiting.
-	for range 6 {
+	for range jobs {
 		if err := <-results; first == nil && err != nil {
 			first = err
 		}

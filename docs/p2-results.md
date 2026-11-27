@@ -101,7 +101,10 @@ an object active. No hosted cost or availability claim follows from local tests.
 
 ```go
 session, err := client.OpenSession(ctx, resource)
-request, err := session.NewWaitAcquire("worker", 30*time.Second, 60*time.Second)
+request, err := session.NewWaitAcquire("worker", pintle.WaitOptions{
+    LeaseTTL:    30 * time.Second,
+    WaitTimeout: 60 * time.Second,
+})
 // Handle errors and persist the full prepared request if crash recovery matters.
 result, err := client.Acquire(ctx, request)
 // Inspect err, result.State, and result.Granted.Current/State before using ownership.

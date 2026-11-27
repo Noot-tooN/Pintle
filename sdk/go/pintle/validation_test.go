@@ -48,11 +48,11 @@ func TestMalformedLeaseObservationsFailClosed(t *testing.T) {
 }
 func TestEndpointPolicyAndNoRedirect(t *testing.T) {
 	for _, endpoint := range []string{"http://example.com", "https://user:pass@example.com", "https://example.com?q=secret", "https://example.com/#secret"} {
-		if _, err := New(endpoint, "token", nil); err == nil {
+		if _, err := New(endpoint, "token"); err == nil {
 			t.Fatal("unsafe endpoint accepted")
 		}
 	}
-	if _, err := New("https://example.com", "bad\nheader", nil); err == nil {
+	if _, err := New("https://example.com", "bad\nheader"); err == nil {
 		t.Fatal("header injection accepted")
 	}
 	destination := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { t.Error("redirect followed"); w.WriteHeader(500) }))
@@ -61,7 +61,7 @@ func TestEndpointPolicyAndNoRedirect(t *testing.T) {
 		http.Redirect(w, r, destination.URL, http.StatusTemporaryRedirect)
 	}))
 	defer origin.Close()
-	c, err := New(origin.URL, "test-secret", nil)
+	c, err := New(origin.URL, "test-secret")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestResponseSizeAndSessionValidation(t *testing.T) {
 		fmt.Fprint(w, strings.Repeat("x", 16385))
 	}))
 	defer server.Close()
-	c, _ := New(server.URL, "token", nil)
+	c, _ := New(server.URL, "token")
 	if _, err := c.OpenSession(context.Background(), Resource{"test", "key"}); err == nil {
 		t.Fatal("oversized response accepted")
 	}
@@ -93,7 +93,7 @@ func TestResponseSizeAndSessionValidation(t *testing.T) {
 
 func TestClientStringRedactsCredential(t *testing.T) {
 	secret := strings.Repeat("a", 64)
-	c, err := New("https://example.com", secret, nil)
+	c, err := New("https://example.com", secret)
 	if err != nil {
 		t.Fatal(err)
 	}

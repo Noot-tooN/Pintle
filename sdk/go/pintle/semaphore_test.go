@@ -10,16 +10,16 @@ import (
 )
 
 func TestSemaphorePreparationAndObservation(t *testing.T) {
-	c, err := New("http://localhost:8787", "test", nil)
+	c, err := New("http://localhost:8787", "test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, capacity := range []uint32{0, 65, ^uint32(0)} {
-		if _, err := c.Semaphore(capacity); err == nil {
+		if _, err := c.Semaphore(SemaphoreOptions{Capacity: capacity}); err == nil {
 			t.Fatal("invalid capacity")
 		}
 	}
-	sem, err := c.Semaphore(2)
+	sem, err := c.Semaphore(SemaphoreOptions{Capacity: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,9 +35,16 @@ func TestSemaphorePreparationAndObservation(t *testing.T) {
 	if err != nil || a.Capacity != 2 || a.Attempt.Sequence != 1 {
 		t.Fatal("preparation consumed sequence or lost capacity")
 	}
-	w, err := wireWait(WaitRequest{Acquisition: a, WaitTimeout: time.Second})
-	if err != nil || w.Acquisition.SemaphoreCapacity != 2 {
-		t.Fatal("capacity lost on wire")
+	wait, err := s.NewWaitAcquire("worker", WaitOptions{LeaseTTL: 3 * time.Second, WaitTimeout: 500 * time.Millisecond})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w, err := wireWait(wait)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Acquisition.SemaphoreCapacity != 2 || w.Acquisition.LeaseTtlMs != 3000 || w.WaitTimeoutMs != 500 {
+		t.Fatalf("got capacity %d, lease TTL %d ms and wait timeout %d ms", w.Acquisition.SemaphoreCapacity, w.Acquisition.LeaseTtlMs, w.WaitTimeoutMs)
 	}
 	if _, err := c.TryAcquire(context.Background(), a); err == nil {
 		t.Fatal("cross-primitive acquisition sent")

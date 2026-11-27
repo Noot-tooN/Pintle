@@ -61,7 +61,7 @@ func TestP2Deterministic(t *testing.T) {
 		for _, releaseBeforeSubscribe := range []bool{false, true} {
 			t.Run(fmt.Sprint(releaseBeforeSubscribe), func(t *testing.T) {
 				s, l := p2owner(h, t, fmt.Sprint("gap", releaseBeforeSubscribe))
-				req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+				req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 				rel, _ := s.NewRelease(*l)
 				call := fmt.Sprintf("session-%d", h.number+1)
 				registered := h.c.hold(call, "wait_registered")
@@ -90,7 +90,7 @@ func TestP2Deterministic(t *testing.T) {
 			for _, replyFirst := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%t-%t", cancelFirst, replyFirst), func(t *testing.T) {
 					s, l := p2owner(h, t, fmt.Sprintf("race-%t-%t", cancelFirst, replyFirst))
-					req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+					req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 					assertSame(t, waitResult(t, resumePending(h, t, req, 1000)).State, pintle.Pending)
 					rel, _ := s.NewRelease(*l)
 					a := h.queue(t, 1001, waitCall(req, true))
@@ -129,7 +129,7 @@ func TestP2Deterministic(t *testing.T) {
 		for _, now := range []uint64{1999, 2000, 2001} {
 			t.Run(fmt.Sprint(now), func(t *testing.T) {
 				s, l := p2owner(h, t, fmt.Sprint("deadline", now))
-				req, _ := s.NewWaitAcquire("waiter", time.Second, time.Second)
+				req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Second})
 				assertSame(t, waitResult(t, resumePending(h, t, req, 1000)).State, pintle.Pending)
 				rel, _ := s.NewRelease(*l)
 				h.do(t, now, releaseCall(rel))
@@ -142,8 +142,8 @@ func TestP2Deterministic(t *testing.T) {
 			})
 		}
 		s, l := p2owner(h, t, "fifo")
-		a, _ := s.NewWaitAcquire("first", time.Second, 5*time.Second)
-		b, _ := s.NewWaitAcquire("second", time.Second, 5*time.Second)
+		a, _ := s.NewWaitAcquire("first", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
+		b, _ := s.NewWaitAcquire("second", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 		resumePending(h, t, a, 1000)
 		resumePending(h, t, b, 1000)
 		rel, _ := s.NewRelease(*l)
@@ -159,7 +159,7 @@ func TestP2Deterministic(t *testing.T) {
 	})
 	t.Run("pending_restart_and_cancel_before_registration", func(t *testing.T) {
 		s, l := p2owner(h, t, "restart")
-		req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+		req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 		resumePending(h, t, req, 1000)
 		h.r.stop()
 		h.activation++
@@ -168,7 +168,7 @@ func TestP2Deterministic(t *testing.T) {
 		rel, _ := s.NewRelease(*l)
 		h.do(t, 1001, releaseCall(rel))
 		assertSame(t, waitStatus(h, t, req, 1001).Acquired.Receipt.FencingToken, "2")
-		next, _ := s.NewWaitAcquire("cancel-first", time.Second, 5*time.Second)
+		next, _ := s.NewWaitAcquire("cancel-first", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 		assertSame(t, waitResult(t, h.do(t, 1001, waitCall(next, true))).State, pintle.Cancelled)
 		assertSame(t, waitResult(t, h.do(t, 1001, waitCall(next, false))).State, pintle.Cancelled)
 		conflict := next
@@ -188,7 +188,7 @@ func TestP2Rollback(t *testing.T) {
 				for position := 1; position <= 32; position++ {
 					key := fmt.Sprintf("rollback-%s-%s-%d", operation, kind, position)
 					s, l := p2owner(h, t, key)
-					req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+					req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 					if operation != "register" {
 						resumePending(h, t, req, 1000)
 					}
@@ -248,7 +248,7 @@ func TestP2Alarm(t *testing.T) {
 			defer func() { h.r.stop() }()
 			alarm := h.c.hold("alarm", "alarm_start")
 			s, _ := p2owner(h, t, "alarm")
-			req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+			req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 			resumePending(h, t, req, 1000)
 			arrived(t, alarm)
 			if mode == "restart" {
@@ -294,7 +294,7 @@ func TestP2CapacityAndIdle(t *testing.T) {
 	var all []held
 	registrationStart := time.Now()
 	for i := 0; i < 16; i++ {
-		req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+		req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 		call := fmt.Sprintf("session-%d", h.number+1)
 		g := h.c.hold(call, "wait_registered")
 		p := h.queue(t, 1000, waitCall(req, false))
@@ -304,7 +304,7 @@ func TestP2CapacityAndIdle(t *testing.T) {
 		all = append(all, held{p, g, req, call})
 	}
 	// Subscriber admission rejects before any queue mutation, without using sleeps.
-	overflow, _ := s.NewWaitAcquire("overflow", time.Second, 5*time.Second)
+	overflow, _ := s.NewWaitAcquire("overflow", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 	call := "overflow"
 	g := h.c.hold(call, "gateway_start")
 	release(g, directive{Now: 1000})
@@ -369,7 +369,7 @@ func TestP2UnknownCommit(t *testing.T) {
 			h := configuredSessionHarness(t, "P2_ENABLED:true")
 			defer func() { h.r.stop() }()
 			s, l := p2owner(h, t, "unknown")
-			req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+			req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 			var p *sessionPending
 			if stage == "grant_after_sync" {
 				resumePending(h, t, req, 1000)
@@ -415,7 +415,7 @@ func TestP2DuplicateAndDisconnect(t *testing.T) {
 	for _, disconnect := range []bool{false, true} {
 		t.Run(fmt.Sprint(disconnect), func(t *testing.T) {
 			s, l := p2owner(h, t, fmt.Sprint("duplicate", disconnect))
-			req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+			req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 			var requests []*sessionPending
 			var registered []*gate
 			for i := 0; i < 2; i++ {
@@ -456,7 +456,7 @@ func TestP2SDKResumesSameIntent(t *testing.T) {
 	h := configuredSessionHarness(t, "P2_ENABLED:true")
 	defer h.r.stop()
 	s, l := p2owner(h, t, "resume")
-	req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+	req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 	call := fmt.Sprintf("session-%d", h.number+1)
 	registered := h.c.hold(call, "wait_registered")
 	p := h.queue(t, 1000, func(ctx context.Context, c *pintle.Client) (any, error) { return c.Acquire(ctx, req) })

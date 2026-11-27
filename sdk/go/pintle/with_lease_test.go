@@ -421,7 +421,7 @@ func TestWithLeaseReleaseAndAckRecovery(t *testing.T) {
 }
 
 func TestWithLeaseValidationAndCancelledEntry(t *testing.T) {
-	c, _ := New("http://localhost:8787", "test", noNetwork{t})
+	c, _ := NewWithHTTPClient("http://localhost:8787", "test", noNetwork{t})
 	fn := func(context.Context, Lease) error { t.Error("invalid callback ran"); return nil }
 	for _, o := range []LeaseOptions{{TTL: -1}, {TTL: 99 * time.Millisecond}, {WaitTimeout: -1}, {WaitTimeout: time.Minute + 1}, {CleanupTimeout: -1}, {CleanupTimeout: time.Minute + 1}, {HolderRef: "bad holder"}} {
 		if c.WithLease(context.Background(), Resource{"test", "key"}, o, fn) == nil {

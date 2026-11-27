@@ -74,7 +74,7 @@ func TestSecurityP2PrincipalBoundaries(t *testing.T) {
 	_, err = bob.Release(ctx, release)
 	expectCode(t, err, connect.CodePermissionDenied)
 
-	wait, err := ownerSession.NewWaitAcquire("waiting", time.Minute, time.Minute)
+	wait, err := ownerSession.NewWaitAcquire("waiting", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 	if err != nil {
 		t.Fatal(err)
 	}

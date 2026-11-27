@@ -47,7 +47,7 @@ func leaseSetup(t *testing.T, mode string, variables ...string) (string, string,
 }
 func sdk(t *testing.T, base, credential string, h connect.HTTPClient) *pintle.Client {
 	t.Helper()
-	c, err := pintle.New(base, credential, h)
+	c, err := pintle.NewWithHTTPClient(base, credential, h)
 	if err != nil {
 		t.Fatal(err)
 	}

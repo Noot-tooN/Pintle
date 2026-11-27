@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 )
 
-// LeaseOptions configures WithLease. Zero fields use the documented defaults.
+// LeaseOptions configures WithLease and WithPermit. Zero fields use the documented defaults.
 type LeaseOptions struct {
 	TTL            time.Duration // default 30s; 100..60000 whole milliseconds
 	WaitTimeout    time.Duration // default 60s; local acquisition budget/server wait limit, 1..60000 whole ms
@@ -103,7 +103,7 @@ func (c *Client) withLease(ctx context.Context, resource Resource, options Lease
 	if err != nil {
 		return err
 	}
-	request, err := s.NewWaitAcquire(o.HolderRef, o.TTL, o.WaitTimeout)
+	request, err := s.NewWaitAcquire(o.HolderRef, WaitOptions{LeaseTTL: o.TTL, WaitTimeout: o.WaitTimeout})
 	if err != nil {
 		return err
 	}

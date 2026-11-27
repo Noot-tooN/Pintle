@@ -27,12 +27,19 @@ type WaitResult struct {
 	State   WaitState
 }
 
-func (s *Session) NewWaitAcquire(holder string, leaseTTL, waitTimeout time.Duration) (WaitRequest, error) {
-	if waitTimeout < time.Millisecond || waitTimeout > time.Minute || waitTimeout%time.Millisecond != 0 {
+// WaitOptions configures a low-level waiting acquisition. Both fields are required.
+type WaitOptions struct {
+	LeaseTTL    time.Duration // How long a granted lease lasts before renewal (100ms..60s).
+	WaitTimeout time.Duration // How long the intent may wait for a grant (1ms..60s).
+}
+
+// NewWaitAcquire prepares a request for Acquire. Durations must be whole milliseconds.
+func (s *Session) NewWaitAcquire(holder string, options WaitOptions) (WaitRequest, error) {
+	if options.WaitTimeout < time.Millisecond || options.WaitTimeout > time.Minute || options.WaitTimeout%time.Millisecond != 0 {
 		return WaitRequest{}, fmt.Errorf("wait timeout must be 1..60000 whole milliseconds")
 	}
-	r, err := s.NewAcquire(holder, leaseTTL)
-	return WaitRequest{Acquisition: r, WaitTimeout: waitTimeout}, err
+	r, err := s.NewAcquire(holder, options.LeaseTTL)
+	return WaitRequest{Acquisition: r, WaitTimeout: options.WaitTimeout}, err
 }
 func wireWait(r WaitRequest) (*v1.AcquireRequest, error) {
 	ms, err := ttl(r.Acquisition.TTL)

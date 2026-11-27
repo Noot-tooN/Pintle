@@ -15,7 +15,7 @@ import (
 
 func semaphoreCall(capacity uint32, f func(context.Context, *pintle.Client) (any, error)) func(context.Context, *pintle.Client) (any, error) {
 	return func(ctx context.Context, c *pintle.Client) (any, error) {
-		sem, err := c.Semaphore(capacity)
+		sem, err := c.Semaphore(pintle.SemaphoreOptions{Capacity: capacity})
 		if err != nil {
 			return nil, err
 		}
@@ -135,10 +135,10 @@ func TestP4SemaphoreSchedules(t *testing.T) {
 		}
 		var waits [2]pintle.WaitRequest
 		for i := range waits {
-			waits[i], _ = s.NewWaitAcquire(fmt.Sprint("waiter", i), time.Second, time.Second)
+			waits[i], _ = s.NewWaitAcquire(fmt.Sprint("waiter", i), pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Second})
 			assertSame(t, waitResult(t, queueSemaphore(t, h, waits[i], 1000)).State, pintle.Pending)
 		}
-		wrong, err := s.NewWaitAcquire("wrong-capacity", time.Second, 10*time.Millisecond)
+		wrong, err := s.NewWaitAcquire("wrong-capacity", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 10 * time.Millisecond})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +207,7 @@ func TestP4SemaphoreSchedules(t *testing.T) {
 				r, _ := s.NewAcquire("owner", time.Second)
 				owner = grantSession(t, h.do(t, 1000, semaphoreAcquire(r))).Current
 			}
-			w, _ := s.NewWaitAcquire("waiting", time.Second, time.Second)
+			w, _ := s.NewWaitAcquire("waiting", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Second})
 			assertSame(t, waitResult(t, queueSemaphore(t, h, w, 1000)).State, pintle.Pending)
 			rel, _ := s.NewRelease(*owner)
 			a := h.queue(t, 1001, semaphoreCall(2, waitCall(w, true)))
@@ -247,7 +247,7 @@ func TestP4SemaphoreRollback(t *testing.T) {
 					r, _ := s.NewAcquire("owner", time.Second)
 					owner = grantSession(t, h.do(t, 1000, semaphoreAcquire(r))).Current
 				}
-				w, _ := s.NewWaitAcquire("waiter", time.Second, time.Second)
+				w, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Second})
 				waitResult(t, queueSemaphore(t, h, w, 1000))
 				rel, _ := s.NewRelease(*owner)
 				p := h.queue(t, 1001, semaphoreCall(2, releaseCall(rel)))
@@ -287,7 +287,7 @@ func TestP4SemaphoreAlarmAndPrecision(t *testing.T) {
 		}
 		var waits [2]pintle.WaitRequest
 		for i := range waits {
-			waits[i], _ = s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+			waits[i], _ = s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 			assertSame(t, waitResult(t, queueSemaphore(t, h, waits[i], 1000)).State, pintle.Pending)
 		}
 		arrived(t, alarm)

@@ -157,10 +157,16 @@ type Client struct {
 func (c Client) String() string   { return "Client{credential=REDACTED}" }
 func (c Client) GoString() string { return c.String() }
 
-// New uses binary unary Connect. HTTP is suitable for local tests; use HTTPS
-// outside loopback. The default transport refuses redirects; custom transports
-// must enforce the same credential policy. Maintain opts into background renewal.
-func New(endpoint, credential string, httpClient connect.HTTPClient) (*Client, error) {
+// New creates a reusable client for a Pintle endpoint with a bearer credential.
+// HTTPS is required outside loopback. The default HTTP client refuses redirects.
+func New(endpoint, credential string) (*Client, error) {
+	return NewWithHTTPClient(endpoint, credential, nil)
+}
+
+// NewWithHTTPClient uses the supplied HTTP client for all RPCs. It must honor
+// context cancellation and refuse redirects to protect the bearer credential.
+// A nil HTTP client selects the same default as New.
+func NewWithHTTPClient(endpoint, credential string, httpClient connect.HTTPClient) (*Client, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || credential == "" || len(credential) > 256 || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return nil, fmt.Errorf("endpoint and credential required")

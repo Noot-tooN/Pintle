@@ -281,7 +281,7 @@ func TestStagingLifecycle(t *testing.T) {
 	g, e := c.TryAcquire(ctx, owner)
 	require(t, e)
 	active(t, g)
-	wait, e := s.NewWaitAcquire("alarm-successor", time.Minute, time.Minute)
+	wait, e := s.NewWaitAcquire("alarm-successor", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 	require(t, e)
 	pending, e := c.ResumeAcquire(ctx, wait)
 	require(t, e)

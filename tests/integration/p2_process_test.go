@@ -50,7 +50,7 @@ func TestP2ProcessHelper(t *testing.T) {
 		}
 		fmt.Println("PINTLE released")
 	} else {
-		req, _ := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+		req, _ := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 		r, err := c.Acquire(ctx, req)
 		if err != nil {
 			t.Fatal(err)

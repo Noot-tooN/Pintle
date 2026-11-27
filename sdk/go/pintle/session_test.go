@@ -15,7 +15,7 @@ func TestSessionConcurrentAllocationAndReleaseReservation(t *testing.T) {
 		t.Fatal("foreign resource accepted")
 	}
 	for _, invalidWait := range []time.Duration{0, -time.Millisecond, time.Microsecond, time.Minute + time.Millisecond} {
-		if _, err := s.NewWaitAcquire("worker", time.Second, invalidWait); err == nil {
+		if _, err := s.NewWaitAcquire("worker", WaitOptions{LeaseTTL: time.Second, WaitTimeout: invalidWait}); err == nil {
 			t.Fatal("invalid wait timeout consumed a sequence")
 		}
 	}

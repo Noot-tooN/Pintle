@@ -1,8 +1,10 @@
-// Package pintle provides server-owned distributed mutex operations over binary
-// unary Connect. It does not arbitrate contention in the client.
+// Package pintle provides distributed locks and semaphore permits over binary unary Connect.
 //
-// Create a Client with New. WithLease manages scoped callback acquisition, renewal,
-// cooperative cancellation and bounded cleanup; fencing remains destination-enforced.
+// Create a Client with New. Use Client.WithLease for an exclusive lock or bind
+// a pool capacity with Client.Semaphore and use Client.WithPermit for one slot.
+// Both helpers acquire, renew and attempt release around a callback. Pass its
+// context to protected work and enforce fencing at the destination.
+//
 // For explicit recovery/persistence, OpenSession for one Resource. Prepare operations
 // with Session.NewAcquire, NewWaitAcquire, NewRenew or NewRelease. Retain each
 // request unchanged across retries, including its Attempt. Package-level request

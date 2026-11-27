@@ -16,7 +16,7 @@ func (n noNetwork) Do(*http.Request) (*http.Response, error) {
 	return nil, fmt.Errorf("unexpected request")
 }
 func TestTTLValidationAndStablePreparedRequests(t *testing.T) {
-	c, err := New("http://localhost:8787", "local-test", noNetwork{t})
+	c, err := NewWithHTTPClient("http://localhost:8787", "local-test", noNetwork{t})
 	if err != nil {
 		t.Fatal(err)
 	}

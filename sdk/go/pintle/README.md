@@ -1,4 +1,4 @@
-# Go SDK: supported mutex workflow
+# Pintle Go SDK
 
 Import `github.com/Noot-tooN/Pintle/sdk/go/pintle`. The module root is
 `github.com/Noot-tooN/Pintle`; generated Protobuf messages and the Connect client
@@ -38,34 +38,40 @@ compatibility separately. Buf checks preserve existing wire fields/methods;
 they do not certify Go source compatibility or storage migration. See
 [the packaging decision](../../../docs/adr/ADR-019-go-sdk-packaging-and-examples.md).
 
+### Updating from the previous checkout
+
+| Previous Go call | Current Go call |
+| --- | --- |
+| `pintle.New(endpoint, credential, nil)` | `pintle.New(endpoint, credential)` |
+| `pintle.New(endpoint, credential, httpClient)` | `pintle.NewWithHTTPClient(endpoint, credential, httpClient)` |
+| `client.Semaphore(n)` | `client.Semaphore(pintle.SemaphoreOptions{Capacity: n})` |
+| `session.NewWaitAcquire(holder, ttl, wait)` | `session.NewWaitAcquire(holder, pintle.WaitOptions{LeaseTTL: ttl, WaitTimeout: wait})` |
+
+These Go source changes use the same RPCs and stored state.
+
 ## Start here
+
+Create one client per endpoint and credential and reuse it across requests.
+
+```go
+client, err := pintle.New(endpoint, credential)
+if err != nil {
+    return err
+}
+```
+
+Use `WithLease` for an exclusive lock or `WithPermit` on a semaphore client
+for one permit. Both helpers manage acquisition, renewal and release attempts
+around your callback.
+
+Use HTTPS outside loopback. The default HTTP client refuses redirects. For a
+custom transport, use `pintle.NewWithHTTPClient(endpoint, credential, httpClient)`.
+The supplied HTTP client must refuse redirects and honor context cancellation.
 
 Run `./bin/just example-local` from the repository: it builds normal Wasm, starts
 local Wrangler with an ephemeral private credential, then builds and executes
 all five [example modes](../../../examples/README.md). No Cloudflare account,
 deployment or hosted traffic is involved.
-
-The current service uses this sequence:
-
-1. `New(endpoint, credential, nil)` creates a reusable client. HTTPS is required
-   outside loopback. Default transport rejects redirects and caps replies at 16 KiB.
-   Custom HTTP clients must preserve these policies and honor context cancellation.
-2. `OpenSession(ctx, resource)` allocates a resource/principal-scoped recovery
-   session. An uncertain OpenSession response may leave an orphan session; retrying
-   may allocate another. Orphans expire normally, and capacity is finite.
-3. Prepare once with the **Session methods**, then send with the Client. Preparation
-   allocates a sequence even before sending. Do not discard a valid prepared request
-   or edit its payload, request ID, session, sequence or ACK watermark for retries.
-4. Inspect the result before doing protected work. Release explicitly when finished.
-   ACK a contiguous prefix only after every outcome in that prefix has been safely
-   consumed or persisted. ACK reclaims recovery evidence; it is not Release.
-
-Package-level `NewAcquire`, `NewRenew`, `NewRelease` and `GetRequestStatus` omit a
-session attempt for earlier focused protocol modes. They remain for those tests;
-use Session constructors and `GetAttemptStatus`/`Session.Status` with the current
-P2 service. Request fields are exported for serialization, not permission to mutate
-an already prepared retry identity. Client/Session methods are concurrency-safe;
-applications must coordinate ACKs across concurrently issued sequences.
 
 ## Managed callbacks: WithLease
 
@@ -139,6 +145,63 @@ A callback panic propagates; cleanup errors cannot be returned during that panic
 The helper keeps recovery in memory only. Use explicit Session APIs with a private
 pre-send journal when crash recovery of requests is required. It does not make
 external business effects exactly-once.
+
+## Semaphore permits
+
+```go
+sem, err := client.Semaphore(pintle.SemaphoreOptions{Capacity: 2}) // retain and reuse this bound client
+if err != nil { return err }
+return sem.WithPermit(ctx, pintle.Resource{Namespace: "jobs", Key: "render-pool"},
+    pintle.LeaseOptions{}, func(work context.Context, permit pintle.Lease) error {
+        return renderDisposablePreview(work) // join child work; honor cancellation
+    })
+```
+
+One acquisition holds one permit. Capacity (1..64) is fixed by the resource's
+first successful grant; mismatches fail explicitly. Weighted permits and resize
+are not implemented. Mutex and semaphore names occupy separate authorities.
+Keep the original client for exclusive locks. The semaphore
+client's lease methods operate on individual permits, including `WithLease` if
+called on that client. Use `WithPermit` to make that intent explicit. Its
+low-level API exposes OpenSession, Acquire/TryAcquire, Renew/Release,
+CancelPending, status and ACK using the existing request types.
+Prepared acquisitions retain Capacity; use the same service/capacity for recovery.
+
+WithPermit shares WithLease's renewal, cancellation and bounded cleanup behavior,
+including `WithLeaseError` recovery fields. A callback receives `Lease` with
+`PermitSlot` and `Capacity`; metadata and fencing stay stable across renewals.
+Fencing is optional, and any cooperating destination must guard **resource + slot**,
+not reject every permit older than the largest resource-wide fence. The helper
+does not require another database or stop non-cooperative work after expiry.
+
+Existing bounds still apply: 16 sessions per resource (one reserved for active
+owner recovery), 32 positions/session, 16 waiters. Each concurrent WithPermit
+borrows a session, so capacity 64 is not a promise of 64 managed callbacks.
+Keep a bound client instead of calling Semaphore for every job. See the
+[executable example](../../../examples/semaphore/main.go) and
+[precise semantics](../../../docs/adr/ADR-021-unweighted-semaphore.md).
+
+## Low-level sessions and recovery
+
+Use sessions directly when you need to persist a request before sending it
+or control its acknowledgement and recovery.
+
+1. `OpenSession(ctx, resource)` allocates a resource/principal-scoped recovery
+   session. An uncertain OpenSession response may leave an orphan session; retrying
+   may allocate another. Orphans expire normally, and capacity is finite.
+2. Prepare once with the **Session methods**, then send with the Client. Preparation
+   allocates a sequence even before sending. Do not discard a valid prepared request
+   or edit its payload, request ID, session, sequence or ACK watermark for retries.
+3. Inspect the result before doing protected work. Release explicitly when finished.
+   ACK a contiguous prefix only after every outcome in that prefix has been safely
+   consumed or persisted. ACK reclaims recovery evidence; it is not Release.
+
+Package-level `NewAcquire`, `NewRenew`, `NewRelease` and `GetRequestStatus` omit a
+session attempt for earlier focused protocol modes. They remain for those tests;
+use Session constructors and `GetAttemptStatus`/`Session.Status` with the current
+P2 service. Request fields are exported for serialization, not permission to mutate
+an already prepared retry identity. Client/Session methods are concurrency-safe;
+applications must coordinate ACKs across concurrently issued sequences.
 
 ## Operations and results
 
@@ -231,35 +294,3 @@ characters, holder 1–64 ASCII identifier bytes. Identifier characters are
 letters/digits plus `._:-`; no Unicode normalization occurs. Tenant identity comes
 from authentication. Do not log credentials, request objects or lease capabilities;
 debug redaction is not a general serialization guarantee.
-
-## Semaphore permits
-
-```go
-sem, err := client.Semaphore(2) // retain and reuse this bound client
-if err != nil { return err }
-return sem.WithPermit(ctx, pintle.Resource{Namespace: "jobs", Key: "render-pool"},
-    pintle.LeaseOptions{}, func(work context.Context, permit pintle.Lease) error {
-        return renderDisposablePreview(work) // join child work; honor cancellation
-    })
-```
-
-One acquisition holds one permit. Capacity (1..64) is fixed by the resource's
-first successful grant; mismatches fail explicitly. Weighted permits and resize
-are not implemented. Mutex and semaphore names occupy separate authorities.
-The semaphore-bound client also exposes OpenSession, Acquire/TryAcquire,
-Renew/Release, CancelPending, status and ACK, using the existing request types.
-Prepared acquisitions retain Capacity; use the same service/capacity for recovery.
-
-WithPermit shares WithLease's renewal, cancellation and bounded cleanup behavior,
-including `WithLeaseError` recovery fields. A callback receives `Lease` with
-`PermitSlot` and `Capacity`; metadata and fencing stay stable across renewals.
-Fencing is optional, and any cooperating destination must guard **resource + slot**,
-not reject every permit older than the largest resource-wide fence. The helper
-does not require another database or stop non-cooperative work after expiry.
-
-Existing bounds still apply: 16 sessions per resource (one reserved for active
-owner recovery), 32 positions/session, 16 waiters. Each concurrent WithPermit
-borrows a session, so capacity 64 is not a promise of 64 managed callbacks.
-Keep a bound client instead of calling Semaphore for every job. See the
-[executable example](../../../examples/semaphore/main.go) and
-[precise semantics](../../../docs/adr/ADR-021-unweighted-semaphore.md).

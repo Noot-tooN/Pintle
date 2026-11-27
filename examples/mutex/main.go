@@ -38,7 +38,7 @@ func run(ctx context.Context, mode string) error {
 	if endpoint == "" || token == "" {
 		return errors.New("set PINTLE_ENDPOINT and PINTLE_TOKEN; see examples/README.md")
 	}
-	c, err := pintle.New(endpoint, token, nil)
+	c, err := pintle.New(endpoint, token)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func lifecycle(ctx context.Context, c *pintle.Client, s *pintle.Session, lease p
 }
 
 func cancellation(ctx context.Context, c *pintle.Client, s *pintle.Session, owner pintle.Lease) error {
-	w, err := s.NewWaitAcquire("waiting", time.Minute, time.Minute)
+	w, err := s.NewWaitAcquire("waiting", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func cancellation(ctx context.Context, c *pintle.Client, s *pintle.Session, owne
 		return err
 	}
 	// Now demonstrate the other ordering: a committed grant wins cancellation.
-	w, err = s.NewWaitAcquire("grant-wins", time.Minute, time.Minute)
+	w, err = s.NewWaitAcquire("grant-wins", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (d *dropRenewal) Do(r *http.Request) (*http.Response, error) {
 
 func recovery(ctx context.Context, c *pintle.Client, s *pintle.Session, lease pintle.Lease, endpoint, token string) error {
 	fault := &dropRenewal{client: &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
-	managed, err := pintle.New(endpoint, token, fault)
+	managed, err := pintle.NewWithHTTPClient(endpoint, token, fault)
 	if err != nil {
 		return err
 	}

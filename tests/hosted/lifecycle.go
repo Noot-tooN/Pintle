@@ -33,7 +33,7 @@ func RunLifecycle(t *testing.T, endpoint, oldKey, newKey string, httpClient *htt
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
 	makeClient := func(key string) *pintle.Client {
-		c, e := pintle.New(endpoint, key, httpClient)
+		c, e := pintle.NewWithHTTPClient(endpoint, key, httpClient)
 		require(t, e)
 		return c
 	}
@@ -57,7 +57,7 @@ func RunLifecycle(t *testing.T, endpoint, oldKey, newKey string, httpClient *htt
 		require(t, e)
 	}
 	pending := func(c *pintle.Client, holder string) pintle.WaitRequest {
-		r, e := s.NewWaitAcquire(holder, time.Minute, time.Minute)
+		r, e := s.NewWaitAcquire(holder, pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 		require(t, e)
 		w, e := c.ResumeAcquire(ctx, r)
 		require(t, e)

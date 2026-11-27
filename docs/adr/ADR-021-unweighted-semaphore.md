@@ -73,7 +73,7 @@ This trades independent message evolution for one recovery contract and generate
 Go interfaces with identical method sets. Future semantic divergence should use
 new messages/services rather than silently overloading existing fields.
 
-`client.Semaphore(capacity)` returns a bound client. Its existing low-level session,
+`client.Semaphore(pintle.SemaphoreOptions{Capacity: capacity})` returns a bound client. Its existing low-level session,
 Acquire, TryAcquire, Renew, Release, status and ACK methods use SemaphoreService.
 `WithPermit` uses the existing WithLease lifecycle: acquire once, initial Renew
 and ACK, renew automatically, cancel work on loss/uncertainty, join work, bounded

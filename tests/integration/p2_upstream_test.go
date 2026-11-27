@@ -53,11 +53,11 @@ func TestP2ExpiredQueueHead(t *testing.T) {
 				t.Fatal(err)
 			}
 			lease := grantSession(t, h.do(t, 600000, acquireSession(a))).Current
-			first, err := head.NewWaitAcquire("head", time.Second, time.Minute)
+			first, err := head.NewWaitAcquire("head", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Minute})
 			if err != nil {
 				t.Fatal(err)
 			}
-			second, err := tail.NewWaitAcquire("tail", time.Second, time.Minute)
+			second, err := tail.NewWaitAcquire("tail", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Minute})
 			if err != nil {
 				t.Fatal(err)
 			}

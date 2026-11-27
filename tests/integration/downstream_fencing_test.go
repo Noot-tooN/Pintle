@@ -52,7 +52,7 @@ func TestDownstreamPostgresFencing(t *testing.T) {
 	_, _, _, r := staticSetup(t, []object{staticKey(credential, tenant, "writer")})
 	defer r.stop()
 	mutex := sdk(t, r.base, credential, client)
-	semaphore, err := mutex.Semaphore(2)
+	semaphore, err := mutex.Semaphore(pintle.SemaphoreOptions{Capacity: 2})
 	if err != nil {
 		t.Fatal(err)
 	}

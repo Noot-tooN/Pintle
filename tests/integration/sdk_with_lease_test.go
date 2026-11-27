@@ -46,9 +46,9 @@ func TestSDKWithLease(t *testing.T) {
 		var c *pintle.Client
 		var err error
 		if transport == nil {
-			c, err = pintle.New(runtime.base, credential, nil)
+			c, err = pintle.New(runtime.base, credential)
 		} else {
-			c, err = pintle.New(runtime.base, credential, transport)
+			c, err = pintle.NewWithHTTPClient(runtime.base, credential, transport)
 		}
 		if err != nil {
 			t.Fatal(err)

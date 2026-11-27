@@ -22,7 +22,7 @@ func TestP2SDK(t *testing.T) {
 	req, _ := s.NewAcquire("owner", 300*time.Millisecond)
 	g, err := c.TryAcquire(ctx, req)
 	before := requireLease(t, g, err)
-	wait, err := s.NewWaitAcquire("waiter", time.Second, 5*time.Second)
+	wait, err := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: 5 * time.Second})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestP2SDK(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertSame(t, *cancelled.Granted.Receipt, *got.Granted.Receipt)
-	unknown, _ := s.NewWaitAcquire("never-admitted", time.Second, time.Second)
+	unknown, _ := s.NewWaitAcquire("never-admitted", pintle.WaitOptions{LeaseTTL: time.Second, WaitTimeout: time.Second})
 	cancelled, err = c.CancelPending(ctx, unknown)
 	if err != nil {
 		t.Fatal(err)

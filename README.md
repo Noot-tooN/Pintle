@@ -1,52 +1,98 @@
 # Pintle
 
-An open-source distributed coordination platform with a portable Rust core.
+Pintle is an open-source coordination service for distributed applications.
+Workers written in different languages can coordinate on the same resource
+through a language-neutral API. The server decides who holds a lock and which
+semaphore permits are available. Go is the first language with a Pintle SDK.
 
-**Current status: P4 semaphore development on top of P3 mutex hardening; production gates remain open.** The portable Rust core implements
-server-owned FIFO Acquire, TryAcquire, Renew, Release, cancellation, and request-status
-recovery. A generated Go Connect client and [Go SDK](sdk/go/pintle/client.go) call the compiled Rust/Wasm
-Worker and Durable Object backed by SQLite. The schema is unpublished.
+| Primitive | When to use it | Example |
+| --- | --- | --- |
+| [Lock](#lock) | One worker at a time needs a lease on a resource. | Update the stock count for one product. |
+| [Semaphore](#semaphore) | A group of workers shares a fixed number of permits. | Let six render jobs share two permits. |
 
-The semaphore adds fixed capacity (1..64), expiring permits, the same server-owned
-FIFO/recovery lifecycle, and Go `WithPermit` with automatic renewal/cancellation.
-See [P4 semantics and local evidence](docs/p4-semaphore-results.md) and the
-[runnable semaphore example](examples/semaphore/main.go). Hosted P3 results do not
-constitute hosted validation of this new primitive.
+**Release status.** The lock and semaphore are pinned at `rc-2026-11-27.2` and
+have passed bounded Cloudflare staging tests. The API is unpublished and may change.
+[Release checklist](docs/release-checklist.md)
 
-Wait registration, cancellation/grant races, lease expiry, renewal/release races,
-replay, rollback, and restart are exercised with controlled logical time and transaction/response ordering. See
-[P3 results](docs/p3-results.md) for current evidence and limits. Resource-scoped
-recovery sessions replace the 1,024 lifetime receipt cap with bounded reusable
-capacity. Explicit acknowledgements reclaim results; Durable Object alarms reclaim
-expired sessions while retaining fencing history. Hosted clock/failover validation
-remains open. This is not production-ready.
+## Run locally
 
-## Using the lock and semaphore from Go
+Start in a checkout on macOS or Linux. Setup requires Bash, Git, a native build
+toolchain and network access for the initial downloads.
 
-From a checkout, run `./bin/just bootstrap` once, then `./bin/just example-local`.
-This starts a local Pintle server and runs both examples with temporary credentials.
-In your application, create a client with `pintle.New(endpoint, token, nil)` and
-check the returned error. The snippets below use that client and a caller-supplied
-`ctx`. The inventory and rendering functions are application code.
+```sh
+./bin/just bootstrap
+./bin/just example-local
+```
 
-**Lock an inventory record.** All writers for this product use the same resource
-key. The inventory store checks the fence in the same operation that updates
-the stock count. [Runnable mutex example](examples/mutex/main.go)
+The first command installs the pinned tools. The second starts a local Worker,
+runs the lock and semaphore examples with temporary credentials, then stops it.
+
+## Connecting an application
+
+Clients call unary Connect RPCs over HTTP with binary Protobuf messages and a
+bearer credential. To build a client in your language, start with the service
+definitions and generate a client that supports this transport. Workers using
+the same primitive, tenant, namespace and resource key reach the same
+authority.
+[Protobuf schemas](proto/pintle/v1/) · [Protocol and recovery semantics](docs/PROTOCOL_DRAFT.md)
+
+The examples below use the Go SDK. The inventory store and renderer are
+application code. [SDK setup](sdk/go/pintle/README.md#installation-and-compatibility)
+
+## Lock
+
+### Lock limits and responsibilities
+
+Use the same lock key on every path that updates the resource, including retries
+and background jobs. Stop issuing writes when the client signals that ownership
+is uncertain. If you call the protocol directly, your client must confirm an
+active grant, renew it during work, attempt release afterward and reuse the
+original request identity and payload to recover a lost reply. [Lost-reply runbook](docs/recovery-policy.md#runbook-timeout-disconnect-or-lost-reply)
+
+A paused worker can resume after a successor acquires the lock. Send the fencing
+token with every protected write. The destination must keep the highest accepted
+token for that tenant, namespace and lock key and check it atomically with the
+update. [How to fence a write](#protecting-writes-after-a-lease-expires)
+
+### Go example — update inventory under a lock
+
+`WithLease` waits for an active lease before calling your function, renews it
+while the function runs, and attempts release when it returns. Pass the callback's
+`work` context to the inventory store so it can stop on cancellation. The store
+checks the fencing token atomically with the stock update.
+[Runnable lock example](examples/mutex/main.go)
 
 ```go
 product := pintle.Resource{Namespace: "inventory", Key: "blue-shirt"}
 return client.WithLease(ctx, product, pintle.LeaseOptions{}, func(work context.Context, lease pintle.Lease) error {
-    return inventory.SaveIfCurrent(work, product, lease.FencingToken, 8)
+    return inventory.SaveIfCurrent(work, product, lease.FencingToken, stockOnHand)
 })
 ```
 
-**Share two render permits across workers.** Each worker uses the same pool key
-and capacity. The callback renders a disposable cache candidate and honors
-cancellation. The runnable example starts six jobs and waits for two to enter
-together. [Runnable semaphore example](examples/semaphore/main.go)
+## Semaphore
+
+### Semaphore limits and responsibilities
+
+All workers in a pool must use the same resource key and capacity. The first
+successful grant sets the capacity for that key (1–64 permits). Each job holds
+one permit. Expiry frees its slot even if the old job keeps running, so make
+each job respond to cancellation. Clients using the protocol directly must
+also manage permit acquisition, renewal and release. [Permit lifecycle and recovery](sdk/go/pintle/README.md#semaphore-permits)
+
+For protected writes, track the highest accepted token **per permit slot**
+(`permit_slot`) within the tenant, namespace and semaphore key. A newer token in one slot must leave
+the other active slots usable. If multiple slots update the same business
+record, that record still needs to handle concurrent writes. [How to fence a write](#protecting-writes-after-a-lease-expires)
+
+### Go example — share two render permits
+
+`WithPermit` waits for one permit, renews it during the callback and attempts
+release when the callback returns. Reuse the semaphore client across jobs. The
+renderer uses the callback context to stop if ownership becomes uncertain.
+[Runnable semaphore example](examples/semaphore/main.go)
 
 ```go
-sem, err := client.Semaphore(2)
+sem, err := client.Semaphore(pintle.SemaphoreOptions{Capacity: 2})
 if err != nil {
     return err
 }
@@ -56,182 +102,31 @@ return sem.WithPermit(ctx, pool, pintle.LeaseOptions{}, func(work context.Contex
 })
 ```
 
-Both helpers renew the grant while the callback runs and attempt release when
-it returns. Pass the callback's `work` context into the job so it can stop if
-ownership becomes uncertain. [Go SDK guide](sdk/go/pintle/README.md)
-
 ## Protecting writes after a lease expires
 
-A worker can pause, lose its lock or semaphore permit, and resume after Pintle
-has granted it to someone else. Pintle issues a higher fencing token to the
-successor. A database or external service can still accept the old worker's
-write until it has recorded the successor's token. Checking the lease before
-sending a write leaves a gap in which ownership can change.
+For both locks and semaphore permits, **the destination can still accept a stale
+write until it records a newer fencing token**. Checking ownership before
+sending the write leaves time for ownership to change.
 
-Pass the grant's `FencingToken` with every protected write, including retries
-and background jobs. At the destination, compare it as an exact unsigned
-integer with the highest token already accepted. Reject a lower token. Record
-the accepted token and apply the write in one atomic operation. Keep that
-record across restarts and row deletion. Equal tokens allow a holder to make
-several writes, so operations that must run only once also need deduplication.
-
-- **Lock.** Keep one highest token per tenant, namespace and lock resource.
-- **Semaphore.** Track each permit slot separately, using the tenant, namespace,
-  semaphore resource and `PermitSlot`. A higher token in one slot must leave
-  the other slots usable. If several slots update the same business record,
-  that record still needs to handle concurrent writes.
-
-If the destination cannot condition an effect on the token, a stale holder can
-still cause that effect. The [PostgreSQL integration test](tests/integration/downstream_fencing_test.go)
-shows the conditional write and exercises a late holder for both primitives.
-See the [observed handoffs and reproduction steps](docs/TEST_PLAN.md#downstream-fencing).
-
-## Run locally
-
-macOS or Linux, with Git, a native linker/build toolchain, Bash, and network access
-for initial dependency downloads:
-
-```sh
-./bin/just bootstrap
-./bin/just test
-```
-
-The checked-in `bin/hermit` launcher bootstraps Hermit. Hermit pins Just 1.59.0 and manages Node, Go,
-Rustup, Buf, and the Go Protobuf/Connect generators; `rust-toolchain.toml` pins
-Rust and its Wasm target. Bootstrap installs
-pinned `worker-build` into Hermit's project-local Cargo home and Wrangler from
-`package-lock.json`. No globally installed Just, Rust, Node, Go, or Wrangler is needed.
-
-The root [`justfile`](justfile) is the single command interface, also used by CI
-and Wrangler's build hook. See [migration evidence](docs/just-migration-results.md).
-Run `./bin/just` or `./bin/just --list` to discover tasks.
-After `source ./bin/activate-hermit`, use `just` directly from any subdirectory.
-
-| Command | Purpose |
-| --- | --- |
-| `./bin/just bootstrap` | Install pinned tools and dependencies |
-| `./bin/just check` | Formatting, lint, codegen compatibility and Go vet |
-| `./bin/just test-core` | Native Rust core/auth tests |
-| `./bin/just test-sdk` | Go SDK unit tests with the race detector |
-| `./bin/just check-sdk-package` | Build the example from an independent Go consumer module |
-| `./bin/just example-local` | Run mutex and semaphore examples against local Wrangler |
-| `./bin/just test-runtime` | Build normal Wasm and test real local Wrangler |
-| `./bin/just test-hardening` | Instrumented deterministic tests; restore normal Wasm |
-| `./bin/just test` | Complete local suite, sequentially |
-| `./bin/just generate` | Regenerate Rust/Go Protobuf code |
-| `./bin/just audit` | Online npm/OSV advisory checks |
-| `./bin/just security-scan /path/to/go-rules.yaml` | Optional local Opengrep scan of production Go files; requires an installed scanner and local rules, keeps state inside Pintle |
-
-Focused test recipes accept an optional filter, e.g.
-`./bin/just test-sdk TestMaintenance` or `./bin/just test-core independent_two_waiter`.
-`./bin/just generate '/tmp/pintle generated'` supports an alternate output directory.
-Run only one Wasm build/runtime/hardening workflow per checkout at a time: they
-share build artifacts. Just sequences the complete suite; it does not isolate
-separately launched invocations. Existing cache/localhost sandbox permissions
-still apply. For Codex on this Mac, the project defines a `pintle-local` profile
-for the two tool caches and loopback tests; see [setup and activation](docs/local-test-permissions.md).
-External downloads/audits remain separately authorized.
-
-`just test` checks Buf lint/breaking changes and generated-code drift, then runs
-native core tests, formatting, Clippy, a real release Wasm build, and Go HTTP and
-generated Connect client and SDK tests against local Wrangler/Miniflare/workerd. It starts and kills
-its own runtime processes; logs and persistent SQLite state are retained under
-ignored `test-results/protocol-*`, `test-results/p1-*`, and
-`test-results/p3-*` directories. No Cloudflare
-account is needed. Protocol tests create random local credentials and delete their
-temporary `.dev.vars` file during cleanup.
-
-The full suite also runs `just test-hardening`, which compiles an explicit
-`test-hooks` Wasm feature and uses a local controller to choose execution order
-and logical time. Go tests run with `-race`. The recipe restores normal Wasm on
-exit. Hardening traces are retained under ignored `test-results/p1-*` directories.
-
-Regenerate the checked-in Rust types, Go messages, and Go client with
-`./bin/just generate`; validate them with `./bin/just check-proto`.
-The schema is in [`proto/pintle/v1/lock.proto`](proto/pintle/v1/lock.proto), and the
-generated Go client is under [`gen/go/pintle/v1`](gen/go/pintle/v1).
-
-Start with the [Go SDK guide](sdk/go/pintle/README.md) and
-[runnable examples](examples/README.md). The canonical module is
-`github.com/Noot-tooN/Pintle`, with SDK import
-`github.com/Noot-tooN/Pintle/sdk/go/pintle`. This API is unpublished/unfrozen;
-the guide documents local consumption without claiming a released version.
-
-The obsolete P0 JSON fixture and P0b grant implementation have been removed.
-Their useful checks now exercise the lease/session implementation. There are no
-HTTP seed, vacate or snapshot controls. Private tests inspect SQLite at controlled
-boundaries and seed counters only while the local runtime is stopped. See the
-[coverage map and results](docs/test-consolidation-results.md).
-
-The P2 integration suite uses `P2_ENABLED=true` and ephemeral authenticated
-test identities and explicit `PINTLE_AUTH_MODE=test`. Omitted auth mode defaults to
-static credentials. P1/P1.1/P2 modes cannot be mixed; P1/P1.1 remain focused lease/session regression modes.
-See [P2 SDK usage](docs/p2-results.md#sdk-usage-and-recovery). Acquire keeps durable
-server intent across bounded HTTP responses and disconnects; CancelPending must
-reconcile a grant that may have won the race. Open a session, prepare each request
-once, and preserve its full payload/session/sequence for retries. Explicitly ACK
-only after safely consuming the results; ACK is separate from Release. Distinguish
-historical Receipt from Current/State; an old grant is not current ownership.
-
-Run `./bin/just audit` separately for online npm/OSV advisory checks.
-See [deployment preparation](docs/deployment.md), [security review](docs/security-review.md),
-and the [SDK maintenance contract](docs/p3-results.md#sdk-maintenance-contract).
-For incident handling, see the [recovery policy and runbooks](docs/recovery-policy.md).
-The [isolated staging setup](docs/staging.md) provides dry-run and opt-in hosted
-smoke commands. The first real Cloudflare Free deployment passed all six hosted
-smoke scenarios; see [hosted results and remaining limits](docs/staging-results.md).
-The follow-up verified hosted redeployment persistence, credential rotation,
-alarm-only handoff and idle authority reconstruction using persisted logs. See
-the [lifecycle results](docs/staging-lifecycle-results.md) for evidence, earlier
-observer failures and remaining release limits.
-The [bounded capacity pass](docs/staging-capacity-results.md) adds disconnect and
-renewal-response recovery, session/waiter exhaustion and single-location WAN samples.
+The wire field `fencing_token` is a decimal string. Compare tokens as exact
+unsigned integers. Reject a lower token and record an accepted token atomically
+with the data change. Retain the highest accepted token across restarts and
+row deletion. Equal tokens allow several writes by one holder, so operations
+that must take effect only once also need deduplication. External services that
+cannot check the token can still accept stale work. [PostgreSQL example and observed handoffs](docs/TEST_PLAN.md#downstream-fencing)
 
 ## Architecture and evidence
 
-- [`docs/p3-results.md`](docs/p3-results.md): deterministic hardening, renewal/Lost,
-  static credential policy, metrics, local latency and remaining release gates.
-- [`docs/adr/ADR-011-p3-local-hardening.md`](docs/adr/ADR-011-p3-local-hardening.md):
-  policy boundaries and implementation decisions.
+A Cloudflare Worker authenticates each request and routes it to the resource's
+Durable Object. A portable Rust core makes the coordination decisions, and the object
+persists them in SQLite. The server owns the lock and semaphore wait queues.
+[Design](PROJECT_SPEC.md) · [Protocol](docs/PROTOCOL_DRAFT.md) · [Guarantees and limits](docs/GUARANTEES.md)
 
-- [`docs/p2-results.md`](docs/p2-results.md): durable FIFO waiting, cancellation,
-  alarms, two-process SDK handoff, fault tests, and operational limits.
-- [`docs/adr/ADR-010-server-owned-bounded-acquire.md`](docs/adr/ADR-010-server-owned-bounded-acquire.md):
-  atomic queue semantics, bounded unary resumption, and notification design.
+Run `./bin/just test` for the full local suite and `./bin/just audit` for the
+online dependency audit. The `chrono` advisory `RUSTSEC-2026-0543` remains
+visible in the audit. The release checklist records its limited pilot acceptance.
+Run one Wasm build or runtime test at a time per checkout because these commands
+share build artifacts. [Test plan](docs/TEST_PLAN.md) · [All development commands](justfile)
 
-- [`docs/p11-results.md`](docs/p11-results.md): bounded recovery sessions, automatic
-  cleanup, storage measurements, and full-suite evidence.
-- [`docs/adr/ADR-009-bounded-recovery-sessions.md`](docs/adr/ADR-009-bounded-recovery-sessions.md):
-  acknowledgement, expiry, capacity, storage layout, and compatibility decisions.
-
-- [`docs/p1-results.md`](docs/p1-results.md): lease contract, Go SDK, deterministic
-  coverage, actual full-suite output, and remaining limitations.
-- [`docs/adr/ADR-008-p1-lease-lifecycle.md`](docs/adr/ADR-008-p1-lease-lifecycle.md):
-  ownership capabilities, clock model, recovery, and bounded receipt retention.
-
-- [`docs/spike-results.md`](docs/spike-results.md): acceptance matrix, actual
-  commands/results, implementation choices, and unverified semantics.
-- [`docs/p0b-results.md`](docs/p0b-results.md): generated-client interoperability,
-  authentication, deadlines, wire limits, and supported Connect subset.
-- [`docs/hardening-results.md`](docs/hardening-results.md): deterministic schedules,
-  reference model, history checks, fault matrix, and the replay-validation fix.
-- [`PROJECT_SPEC.md`](PROJECT_SPEC.md): canonical design and guarantee boundaries.
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md): ordered milestones.
-- [`docs/GUARANTEES.md`](docs/GUARANTEES.md): local evidence versus unverified production targets.
-- [`docs/adr/ADR-005-p0-transaction-interop.md`](docs/adr/ADR-005-p0-transaction-interop.md):
-  scoped transaction and integer decisions.
-- [`AGENTS.md`](AGENTS.md) and [`START_HERE_AGENT_PROMPT.md`](START_HERE_AGENT_PROMPT.md):
-  implementation instructions.
-
-The [P3 API/SDK review](docs/sdk-review-results.md) adds runnable examples,
-canonical Go packaging, a preparation fix and full-suite evidence. Next complete
-independent security review, vulnerability-report triage, final documentation and
-release-candidate validation. See the
-[release checklist](docs/release-checklist.md) for completed evidence and open items.
-Tenant-wide quotas, customer plans and billing are deferred to a future SaaS;
-existing authenticated isolation and safety limits stay in place. OSS provides
-telemetry and runbooks; operators configure deployment alerts and workload limits.
-P4 helpers follow the OSS gate. Hosted clock/failover guarantees remain limited
-to the explicitly observed scenarios; OSS publication does not approve a
-production deployment or a public SaaS launch.
-Existing licensing is preserved in [`LICENSE`](LICENSE).
+- **Operating Pintle** — [Deployment](docs/deployment.md) · [Recovery and rollback](docs/recovery-policy.md) · [Security review](docs/security-review.md)
+- **Contributing** — [Implementation plan](docs/IMPLEMENTATION_PLAN.md) · [Architecture decisions](docs/adr/) · [License](LICENSE)

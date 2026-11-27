@@ -97,7 +97,7 @@ func Run(t *testing.T, endpoint, token string) {
 	defer cancel()
 	wire := &transport{}
 	httpClient := &http.Client{Transport: wire, Timeout: 12 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	c, err := pintle.New(endpoint, token, httpClient)
+	c, err := pintle.NewWithHTTPClient(endpoint, token, httpClient)
 	require(t, err)
 	runID, err := pintle.NewRequestID()
 	require(t, err)
@@ -120,7 +120,7 @@ func Run(t *testing.T, endpoint, token string) {
 	}()
 
 	t.Run("authentication", func(t *testing.T) {
-		bad, err := pintle.New(endpoint, "invalid", httpClient)
+		bad, err := pintle.NewWithHTTPClient(endpoint, "invalid", httpClient)
 		require(t, err)
 		_, err = bad.OpenSession(ctx, pintle.Resource{Namespace: "staging", Key: "unauthorized"})
 		code(t, err, connect.CodeUnauthenticated)
@@ -252,7 +252,7 @@ func Run(t *testing.T, endpoint, token string) {
 		g, err := c.TryAcquire(ctx, req)
 		require(t, err)
 		owner := *active(t, g)
-		cancelled, err := s.NewWaitAcquire("cancelled", time.Minute, time.Minute)
+		cancelled, err := s.NewWaitAcquire("cancelled", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 		require(t, err)
 		// A full bounded response confirms registration without guessing admission time.
 		pending, err := c.ResumeAcquire(ctx, cancelled)
@@ -270,7 +270,7 @@ func Run(t *testing.T, endpoint, token string) {
 		if gone.State != pintle.Cancelled {
 			t.Fatal("cancelled intent rejoined queue")
 		}
-		wait, err := s.NewWaitAcquire("waiter", time.Minute, time.Minute)
+		wait, err := s.NewWaitAcquire("waiter", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: time.Minute})
 		require(t, err)
 		type outcome struct {
 			result *pintle.WaitResult
@@ -347,7 +347,7 @@ func Run(t *testing.T, endpoint, token string) {
 		g, err := c.TryAcquire(ctx, req)
 		require(t, err)
 		owner := *active(t, g)
-		wait, err := s.NewWaitAcquire("successor", time.Minute, 10*time.Second)
+		wait, err := s.NewWaitAcquire("successor", pintle.WaitOptions{LeaseTTL: time.Minute, WaitTimeout: 10 * time.Second})
 		require(t, err)
 		got, err := c.Acquire(ctx, wait)
 		require(t, err)
