@@ -1,4 +1,5 @@
 //! Portable coordination primitives and transactional storage boundary.
+pub mod cooldown;
 pub mod lease;
 pub mod semaphore;
 pub mod session;

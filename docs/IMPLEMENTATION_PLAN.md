@@ -121,7 +121,9 @@ See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
   implementation. Generated clients exercise admission and result recovery across
   restarts. The managed Go cache-fill helper also exercises two processes
   sharing a destination across producer death and late publication.
-- Remaining helpers: cooldown; rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
+- Cooldown uses the portable Rust core, an opt-in Worker service and Go
+  `TryAdmit`. See the [admission and retry contract](adr/ADR-023-cooldown.md).
+- Remaining helpers: rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
 - Validate *true* portability using a native Rust + FDB/etcd backend; do not build a large generic backend framework for hypothetical capabilities.
 
 The P4 rate-limit/quota primitives are coordination features for applications,

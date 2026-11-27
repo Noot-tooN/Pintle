@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package pintle.v1;
+
+import "pintle/v1/lock.proto";
+
+option go_package = "github.com/Noot-tooN/Pintle/gen/go/pintle/v1;pintlev1";
+
+service CooldownService {
+  // SDK preparation step. Reading a window reserves nothing.
+  rpc GetCooldownWindow(GetCooldownWindowRequest) returns (GetCooldownWindowResponse);
+  rpc TryAdmit(TryAdmitRequest) returns (TryAdmitResponse);
+}
+message GetCooldownWindowRequest {
+  ResourceId resource = 1;
+}
+message GetCooldownWindowResponse {
+  string window_id = 1;
+}
+message TryAdmitRequest {
+  ResourceId resource = 1;
+  string window_id = 2;
+  string request_id = 3;
+  uint32 interval_ms = 4;
+}
+enum CooldownStatus {
+  COOLDOWN_STATUS_UNSPECIFIED = 0;
+  COOLDOWN_STATUS_ADMITTED = 1;
+  COOLDOWN_STATUS_COOLING_DOWN = 2;
+  COOLDOWN_STATUS_SUPERSEDED = 3;
+}
+message TryAdmitResponse {
+  CooldownStatus status = 1;
+  uint64 retry_at_unix_ms = 2;
+  optional uint64 admitted_at_unix_ms = 3;
+}

@@ -47,3 +47,15 @@ func TestLeaseStringRedactsCapability(t *testing.T) {
 		}
 	}
 }
+
+func TestTryAdmitRejectsInvalidIntervalsBeforePreparing(t *testing.T) {
+	c, err := NewWithHTTPClient("http://localhost:8787", "local-test", noNetwork{t})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, interval := range []time.Duration{-time.Millisecond, 0, time.Microsecond, time.Millisecond + time.Nanosecond, 24*time.Hour + time.Millisecond} {
+		if _, err := c.TryAdmit(t.Context(), Resource{"test", "index"}, interval); err == nil {
+			t.Fatalf("accepted interval %v", interval)
+		}
+	}
+}

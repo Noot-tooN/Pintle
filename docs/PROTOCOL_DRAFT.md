@@ -47,6 +47,14 @@ ticket. Use it to observe, complete or cancel the fill according to the assigned
 role. The [cache-fill contract](adr/ADR-022-singleflight-cache-fill.md#local-implementation)
 describes ambiguous replies, expiry, result limits and the local opt-in flag.
 
+## Experimental local cooldown service
+
+The SDK prepares a window internally with `GetCooldownWindow` and sends
+`TryAdmit` with a stable window ID, request ID and interval. The response
+carries the authority deadline for admitted, cooling-down and superseded
+attempts. [Cooldown schema](../proto/pintle/v1/cooldown.proto) ·
+[Admission and retry contract](adr/ADR-023-cooldown.md)
+
 ## RPCs (server-side authoritative)
 
 ```text

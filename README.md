@@ -11,6 +11,7 @@ language with a Pintle SDK.
 | [Lock](#lock) | One worker at a time needs a lease on a resource. | Update the stock count for one product. |
 | [Semaphore](#semaphore) | A group of workers shares a fixed number of permits. | Let six render jobs share two permits. |
 | [Singleflight](#singleflight) | Concurrent callers need the same result. | Fetch a catalog entry once for overlapping cache misses. |
+| [Cooldown](#cooldown) | Space out starts of the same keyed action. | Let one worker start refreshing a tenant’s search index. |
 
 **Release status.** Development candidate `rc-2026-11-27.3` includes the lock,
 semaphore and experimental opt-in singleflight. All three have passed bounded
@@ -148,6 +149,20 @@ value, err := client.CacheFill(ctx, key,
     },
 )
 ```
+
+## Cooldown
+
+Call `client.TryAdmit(ctx, indexKey, 30*time.Second)` when a tenant's search
+index needs a refresh. The winning admission starts the 30-second interval.
+Other workers receive the earliest time to try again in `RetryAt`, even if the
+winner crashes before starting work. At that deadline a fresh caller can win.
+Before publishing, check the source revision so a delayed refresh cannot
+overwrite a newer index.
+
+Cooldown has been tested locally with Wrangler, including lost replies and
+process restarts. Enable it with `P2_ENABLED=true` and
+`PINTLE_COOLDOWN_ENABLED=true`.
+[Go SDK usage and recovery](sdk/go/pintle/README.md#keyed-cooldown) · [Contract and local tests](docs/adr/ADR-023-cooldown.md)
 
 ## Protecting writes after a lease expires
 

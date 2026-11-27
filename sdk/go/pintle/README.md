@@ -349,3 +349,18 @@ characters, holder 1–64 ASCII identifier bytes. Identifier characters are
 letters/digits plus `._:-`; no Unicode normalization occurs. Tenant identity comes
 from authentication. Do not log credentials, request objects or lease capabilities;
 debug redaction is not a general serialization guarantee.
+
+## Keyed cooldown
+
+Call `client.TryAdmit(ctx, resource, 30*time.Second)` when a tenant's search
+index appears stale. On `pintle.CooldownAdmitted`, recheck the desired revision
+and publish only if the index advances. A crash after admission consumes the
+full interval. On `pintle.CoolingDown`, the authority's `RetryAt` gives the
+earliest opportunity for a new attempt. On `pintle.CooldownSuperseded`, a
+successor has already won. Recheck freshness before considering another call.
+
+Use whole milliseconds from 1 ms through 24 hours. The SDK prepares internally
+and retries an ambiguous admission once while the context is live. If recovery
+still fails, use `errors.As` to obtain a `*pintle.CooldownRecoveryError` and
+call its `Retry(ctx)` with a fresh context. This preserves the original
+identity. Calling `TryAdmit` again can start a new window.

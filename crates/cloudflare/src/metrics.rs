@@ -23,6 +23,13 @@ pub fn authority(instance: Option<&str>, operation: &str, result: &Result<Respon
     }
 }
 pub fn method(path: &str) -> &'static str {
+    if let Some(method) = path.strip_prefix(crate::cooldown_rpc::PREFIX) {
+        return match method {
+            "GetCooldownWindow" => "GetCooldownWindow",
+            "TryAdmit" => "TryAdmit",
+            _ => "unknown",
+        };
+    }
     if let Some(method) = path.strip_prefix(crate::singleflight_rpc::PREFIX) {
         return match method {
             "GetFlightGeneration" => "GetFlightGeneration",

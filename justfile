@@ -89,7 +89,7 @@ test-runtime filter='.*':
     ./bin/go test -race -count=1 -timeout=3m -v ./tests/integration -run "$1"
 
 # Run controlled-clock/fault tests; always restore normal Wasm, including on failure.
-test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries|TestP4|TestSingleflightStorage|TestSingleflightCacheFillProcesses':
+test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|TestP11Deterministic|TestP2|TestP3CredentialTimeBoundaries|TestP4|TestSingleflightStorage|TestCooldownStorage|TestSingleflightCacheFillProcesses':
     restore() {
       status=$?
       trap - EXIT

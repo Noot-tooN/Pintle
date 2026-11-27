@@ -146,6 +146,7 @@ func validateOwnership(l Lease) error {
 }
 
 type Client struct {
+	cooldownRPC   pintlev1connect.CooldownServiceClient
 	flightRPC     pintlev1connect.SingleflightServiceClient
 	semaphoreRPC  pintlev1connect.SemaphoreServiceClient
 	capacity      uint32
@@ -185,6 +186,7 @@ func NewWithHTTPClient(endpoint, credential string, httpClient connect.HTTPClien
 	}
 	limit := connect.WithReadMaxBytes(16384)
 	return &Client{
+		cooldownRPC:  pintlev1connect.NewCooldownServiceClient(httpClient, endpoint, limit),
 		flightRPC:    pintlev1connect.NewSingleflightServiceClient(httpClient, endpoint, limit),
 		semaphoreRPC: pintlev1connect.NewSemaphoreServiceClient(httpClient, endpoint, limit),
 		rpc:          pintlev1connect.NewLockServiceClient(httpClient, endpoint, limit),
@@ -198,6 +200,17 @@ func ttl(d time.Duration) (uint32, error) {
 	}
 	return uint32(d / time.Millisecond), nil
 }
+func ambiguousRPC(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch connect.CodeOf(err) {
+	case connect.CodeUnknown, connect.CodeUnavailable, connect.CodeDeadlineExceeded, connect.CodeCanceled, connect.CodeInternal:
+		return true
+	}
+	return false
+}
+
 func authorize[T any](c *Client, msg *T) *connect.Request[T] {
 	r := connect.NewRequest(msg)
 	r.Header().Set("Authorization", "Bearer "+c.credential)

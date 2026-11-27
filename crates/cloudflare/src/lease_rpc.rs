@@ -1,5 +1,8 @@
 //! Lease/wait wire and platform adaptation. All coordination decisions live in pintle-core.
-use crate::{SqlTransaction, atomic, connect::*, schedule::Schedule, singleflight_rpc as flights};
+use crate::{
+    SqlTransaction, atomic, connect::*, cooldown_rpc as cooldown, schedule::Schedule,
+    singleflight_rpc as flights,
+};
 use futures_util::future::{Either, select};
 use pintle_core::Transaction;
 use pintle_core::lease::{self, Command, Mutation, Rejection, Reply};
@@ -39,6 +42,7 @@ pub fn is_internal(req: &Request) -> bool {
     req.path().starts_with(INTERNAL)
         || req.path().starts_with(SEMAPHORE_INTERNAL)
         || req.path().starts_with(flights::INTERNAL)
+        || req.path().starts_with(cooldown::INTERNAL)
 }
 #[derive(Clone, Copy)]
 enum WaitKind {
@@ -245,9 +249,15 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
             return Err(unavailable());
         }
         let path = req.path();
+        let is_cooldown = path.starts_with(cooldown::PREFIX);
         let singleflight = path.starts_with(flights::PREFIX);
         let semaphore = path.starts_with(SEMAPHORE_PREFIX);
-        let (prefix, internal_prefix, primitive) = if singleflight {
+        let (prefix, internal_prefix, primitive) = if is_cooldown {
+            if !cooldown::enabled(env) {
+                return Err(RpcError::new("unimplemented", "cooldown disabled", 501));
+            }
+            (cooldown::PREFIX, cooldown::INTERNAL, "cooldown-v1")
+        } else if singleflight {
             if !flights::enabled(env) {
                 return Err(RpcError::new("unimplemented", "singleflight disabled", 501));
             }
@@ -263,7 +273,9 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
         let method = path
             .strip_prefix(prefix)
             .ok_or_else(|| RpcError::new("unimplemented", "unknown RPC", 501))?;
-        let known = if singleflight {
+        let known = if is_cooldown {
+            cooldown::known(method)
+        } else if singleflight {
             flights::known(method)
         } else {
             matches!(
@@ -298,7 +310,9 @@ async fn gateway_inner(mut req: Request, env: &Env) -> Result<Response> {
             check_deadline(schedule.now(), deadline)?;
             let credential = authenticate(&req, env, schedule.now())?;
             let bytes = body(&mut req).await?;
-            let resource = if singleflight {
+            let resource = if is_cooldown {
+                cooldown::decode(method, &bytes)?.0
+            } else if singleflight {
                 flights::decode(method, &bytes)?.0
             } else {
                 decode(method, &bytes, semaphore)?.resource
@@ -571,6 +585,13 @@ pub async fn authority(
             .ok_or_else(unavailable)?;
         check_deadline(schedule.now(), deadline)?;
         let path = req.path();
+        if let Some(method) = path.strip_prefix(cooldown::INTERNAL) {
+            if !cooldown::enabled(env) {
+                return Err(unavailable());
+            }
+            let (_, action) = cooldown::decode(method, &body(&mut req).await?)?;
+            return cooldown::execute(state, schedule, subject, deadline, action).await;
+        }
         if let Some(method) = path.strip_prefix(flights::INTERNAL) {
             if !flights::enabled(env) {
                 return Err(unavailable());

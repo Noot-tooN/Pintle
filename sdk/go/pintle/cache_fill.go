@@ -74,11 +74,11 @@ func (c *Client) CacheFill(ctx context.Context, r Resource, lookup func(context.
 	// A replay can return the original assignment. Never extend its local work budget.
 	workDeadline := time.Now().Add(flightLifetime)
 	joined, err := c.flightRPC.JoinFlight(ctx, authorize(c, attempt))
-	if flightAmbiguous(err) {
+	if ambiguousRPC(err) {
 		cleanup, done := flightCleanup(ctx)
 		joined, err = c.flightRPC.JoinFlight(cleanup, authorize(c, attempt))
 		done()
-		if flightAmbiguous(err) {
+		if ambiguousRPC(err) {
 			return nil, &CacheFillRecoveryError{Cause: errors.Join(ctx.Err(), err), Join: attempt}
 		}
 	}
@@ -109,16 +109,6 @@ func (c *Client) CacheFill(ctx context.Context, r Resource, lookup func(context.
 
 func flightCleanup(ctx context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(ctx), flightCleanupTimeout)
-}
-func flightAmbiguous(err error) bool {
-	if err == nil {
-		return false
-	}
-	switch connect.CodeOf(err) {
-	case connect.CodeUnknown, connect.CodeUnavailable, connect.CodeDeadlineExceeded, connect.CodeCanceled, connect.CodeInternal:
-		return true
-	}
-	return false
 }
 
 // pending is distinct from a successful empty value.
@@ -191,7 +181,7 @@ func (c *Client) completeFill(ctx context.Context, join *v1.JoinFlightRequest, r
 	cleanup, cancel := flightCleanup(ctx)
 	defer cancel()
 	res, err := c.flightRPC.CompleteFlight(cleanup, authorize(c, req))
-	if flightAmbiguous(err) && cleanup.Err() == nil {
+	if ambiguousRPC(err) && cleanup.Err() == nil {
 		res, err = c.flightRPC.CompleteFlight(cleanup, authorize(c, req))
 	}
 	if err == nil {
@@ -235,7 +225,7 @@ func (c *Client) awaitFill(ctx context.Context, join *v1.JoinFlightRequest, tick
 			if !pending {
 				return v, statusErr
 			}
-		} else if !flightAmbiguous(err) {
+		} else if !ambiguousRPC(err) {
 			cause = err
 			break
 		}
@@ -246,7 +236,7 @@ func (c *Client) awaitFill(ctx context.Context, join *v1.JoinFlightRequest, tick
 	defer cancel()
 	request := &v1.CancelFlightRequest{Resource: join.Resource, Ticket: ticket}
 	cancelled, err := c.flightRPC.CancelFlight(cleanup, authorize(c, request))
-	if flightAmbiguous(err) && cleanup.Err() == nil {
+	if ambiguousRPC(err) && cleanup.Err() == nil {
 		cancelled, err = c.flightRPC.CancelFlight(cleanup, authorize(c, request))
 	}
 	if err != nil {

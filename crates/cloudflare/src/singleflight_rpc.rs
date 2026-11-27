@@ -1,11 +1,8 @@
 //! Connect and SQLite adapter for the opt-in local singleflight service.
-use crate::{Fault, SqlTransaction, atomic, connect::*, lease_rpc, schedule::Schedule};
-use pintle_core::{
-    Transaction,
-    singleflight::{
-        self as sf,
-        durable::{Action, Authority, Rejection, Reply},
-    },
+use crate::{connect::*, lease_rpc, schedule::Schedule, snapshot};
+use pintle_core::singleflight::{
+    self as sf,
+    durable::{Action, Authority, Rejection, Reply},
 };
 use pintle_protocol::v1::*;
 use prost::Message;
@@ -147,57 +144,9 @@ fn encode(method: &str, reply: Reply) -> RpcResult<Vec<u8>> {
     })
 }
 
-fn transact(
-    sql: SqlStorage,
-    fault: Option<Fault>,
-    now: u64,
-    subject: &str,
-    action: Action,
-    nonce: &str,
-) -> std::result::Result<String, String> {
-    // The table itself marks initialization. An existing table with a missing
-    // snapshot must never silently reissue generation one.
-    #[derive(serde::Deserialize)]
-    struct Table {
-        name: String,
-    }
-    let exists = sql
-        .exec(
-            "SELECT name FROM sqlite_schema WHERE name = 'records'",
-            None,
-        )
-        .and_then(|c| c.to_array::<Table>())
-        .map_err(|e| e.to_string())?
-        .iter()
-        .any(|t| t.name == "records");
-    if !exists {
-        sql.exec(
-            "CREATE TABLE records (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT",
-            None,
-        )
-        .map_err(|e| e.to_string())?;
-    }
-    let mut tx = SqlTransaction {
-        sql,
-        fault,
-        writes: 0,
-    };
-    let mut group = if exists {
-        Authority::restore(&tx.get("singleflight/v1")?.ok_or("missing flight record")?)?
-    } else {
-        Authority::default()
-    };
-    let reply = group.apply(now, subject, action, nonce);
-    tx.put(
-        "singleflight/v1",
-        &serde_json::to_string(&group).map_err(|e| e.to_string())?,
-    )?;
-    serde_json::to_string(&reply).map_err(|e| e.to_string())
-}
-
 pub(super) async fn execute(
     state: &State,
-    mut schedule: Schedule,
+    schedule: Schedule,
     subject: String,
     deadline: u64,
     method: &str,
@@ -208,37 +157,20 @@ pub(super) async fn execute(
     } else {
         String::new()
     };
-    let fault = schedule
-        .at("before_commit")
-        .await
-        .map_err(|_| unavailable())?;
-    check_deadline(schedule.now(), deadline)?;
-    let storage = state.storage();
-    let sql = storage.sql();
-    let clock = schedule.clone();
-    let raw = atomic(&storage, move || {
-        transact(sql, fault, clock.now(), &subject, action, &nonce)
-    })
-    .map_err(|_| unavailable())?;
-    schedule
-        .at("after_commit")
-        .await
-        .map_err(|_| unavailable())?;
-    schedule.sync(&storage).await.map_err(|_| unavailable())?;
-    schedule
-        .at("before_response")
-        .await
-        .map_err(|_| unavailable())?;
-    check_deadline(schedule.now(), deadline)?;
-    let reply: std::result::Result<Reply, Rejection> =
-        serde_json::from_str(&raw).map_err(|_| unavailable())?;
-    let r = Response::from_bytes(encode(method, reply.map_err(rejection)?)?)
-        .map_err(|_| unavailable())?;
-    r.headers()
-        .set("Content-Type", "application/proto")
-        .map_err(|_| unavailable())?;
-    r.headers()
-        .set("Cache-Control", "no-store")
-        .map_err(|_| unavailable())?;
-    Ok(r)
+    let reply = snapshot::commit(
+        state,
+        schedule,
+        deadline,
+        "singleflight/v1",
+        move |raw, now| {
+            let mut group = raw.map(Authority::restore).transpose()?.unwrap_or_default();
+            let reply = group.apply(now, &subject, action, &nonce);
+            Ok((
+                serde_json::to_string(&group).map_err(|e| e.to_string())?,
+                reply,
+            ))
+        },
+    )
+    .await?;
+    snapshot::response(encode(method, reply.map_err(rejection)?)?)
 }

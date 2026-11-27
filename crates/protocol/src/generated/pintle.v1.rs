@@ -301,6 +301,68 @@ impl WaitState {
     }
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetCooldownWindowRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetCooldownWindowResponse {
+    #[prost(string, tag = "1")]
+    pub window_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TryAdmitRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+    #[prost(string, tag = "2")]
+    pub window_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub request_id: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "4")]
+    pub interval_ms: u32,
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TryAdmitResponse {
+    #[prost(enumeration = "CooldownStatus", tag = "1")]
+    pub status: i32,
+    #[prost(uint64, tag = "2")]
+    pub retry_at_unix_ms: u64,
+    #[prost(uint64, optional, tag = "3")]
+    pub admitted_at_unix_ms: ::core::option::Option<u64>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum CooldownStatus {
+    Unspecified = 0,
+    Admitted = 1,
+    CoolingDown = 2,
+    Superseded = 3,
+}
+impl CooldownStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "COOLDOWN_STATUS_UNSPECIFIED",
+            Self::Admitted => "COOLDOWN_STATUS_ADMITTED",
+            Self::CoolingDown => "COOLDOWN_STATUS_COOLING_DOWN",
+            Self::Superseded => "COOLDOWN_STATUS_SUPERSEDED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "COOLDOWN_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "COOLDOWN_STATUS_ADMITTED" => Some(Self::Admitted),
+            "COOLDOWN_STATUS_COOLING_DOWN" => Some(Self::CoolingDown),
+            "COOLDOWN_STATUS_SUPERSEDED" => Some(Self::Superseded),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetFlightGenerationRequest {
     #[prost(message, optional, tag = "1")]
     pub resource: ::core::option::Option<ResourceId>,

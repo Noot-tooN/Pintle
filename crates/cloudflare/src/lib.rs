@@ -1,9 +1,11 @@
 mod connect;
+mod cooldown_rpc;
 mod lease_rpc;
 mod metrics;
 mod notify;
 mod schedule;
 mod singleflight_rpc;
+mod snapshot;
 
 use pintle_core::Transaction;
 use serde::{Deserialize, Serialize};
