@@ -35,6 +35,19 @@ type runtime struct {
 	log  *os.File
 }
 
+func runtimeRunDir(t *testing.T, root, prefix string) string {
+	t.Helper()
+	results := filepath.Join(root, "test-results")
+	if err := os.MkdirAll(results, 0755); err != nil {
+		t.Fatal(err)
+	}
+	run, err := os.MkdirTemp(results, prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return run
+}
+
 func freePort(t *testing.T) string {
 	t.Helper()
 	l, e := net.Listen("tcp", "127.0.0.1:0")

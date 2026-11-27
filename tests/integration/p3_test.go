@@ -40,10 +40,7 @@ func staticSetup(t *testing.T, keys []object, vars ...string) (string, string, s
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err := os.MkdirTemp(filepath.Join(root, "test-results"), "p3-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	run := runtimeRunDir(t, root, "p3-")
 	state := filepath.Join(run, "state")
 	writeStatic(t, state, keys)
 	t.Cleanup(func() { os.Remove(filepath.Join(run, ".dev.vars")) })

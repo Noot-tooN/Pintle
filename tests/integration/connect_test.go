@@ -127,14 +127,7 @@ func TestProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	results := filepath.Join(root, "test-results")
-	if err = os.MkdirAll(results, 0755); err != nil {
-		t.Fatal(err)
-	}
-	run, err := os.MkdirTemp(results, "protocol-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	run := runtimeRunDir(t, root, "protocol-")
 	t.Logf("runtime logs and SQLite state: %s", run)
 	config := protocolConfig(t, root, run)
 	state := filepath.Join(run, "state")

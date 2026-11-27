@@ -28,10 +28,7 @@ func leaseSetup(t *testing.T, mode string, variables ...string) (string, string,
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err := os.MkdirTemp(filepath.Join(root, "test-results"), "p1-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	run := runtimeRunDir(t, root, "p1-")
 	t.Logf("P1 runtime state: %s", run)
 	a, b := token(t), token(t)
 	auth, _ := json.Marshal([]object{{"token": a, "tenant": "tenant-a", "subject": "alice", "namespaces": []string{"test"}}, {"token": b, "tenant": "tenant-a", "subject": "bob", "namespaces": []string{"test"}}})

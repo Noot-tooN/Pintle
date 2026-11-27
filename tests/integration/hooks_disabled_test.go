@@ -23,10 +23,7 @@ func TestDefaultBuildIgnoresTestController(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err := os.MkdirTemp(filepath.Join(root, "test-results"), "hooks-disabled-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	run := runtimeRunDir(t, root, "hooks-disabled-")
 	var hits atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
