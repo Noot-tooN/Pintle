@@ -24,6 +24,8 @@ bootstrap: bootstrap-core
     # worker-build has no upstream Hermit package; install into project CARGO_HOME.
     cargo install worker-build --version 0.8.7 --locked
     go mod download
+    # The offline consumer's go mod tidy also loads Connect and Protobuf test imports.
+    go mod download github.com/google/go-cmp
 
 # Build release Wasm; optional worker-build arguments follow the recipe name.
 build *args:
