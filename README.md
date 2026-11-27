@@ -2,16 +2,20 @@
 
 Pintle is an open-source coordination service for distributed applications.
 Workers written in different languages can coordinate on the same resource
-through a language-neutral API. The server decides who holds a lock and which
-semaphore permits are available. Go is the first language with a Pintle SDK.
+through a language-neutral API. The server decides who holds a lock, which
+permits are available, and which caller fills a cache entry. Go is the first
+language with a Pintle SDK.
 
 | Primitive | When to use it | Example |
 | --- | --- | --- |
 | [Lock](#lock) | One worker at a time needs a lease on a resource. | Update the stock count for one product. |
 | [Semaphore](#semaphore) | A group of workers shares a fixed number of permits. | Let six render jobs share two permits. |
+| [Singleflight](#singleflight) | Concurrent callers need the same result. | Fetch a catalog entry once for overlapping cache misses. |
 
 **Release status.** The lock and semaphore are pinned at `rc-2026-11-27.2` and
-have passed bounded Cloudflare staging tests. The API is unpublished and may change.
+have passed bounded Cloudflare staging tests. Singleflight is experimental and
+has passed local two-process recovery tests. Hosted validation is pending.
+The API is unpublished and may change.
 [Release checklist](docs/release-checklist.md)
 
 ## Run locally
@@ -26,6 +30,11 @@ toolchain and network access for the initial downloads.
 
 The first command installs the pinned tools. The second starts a local Worker,
 runs the lock and semaphore examples with temporary credentials, then stops it.
+The cache-fill integration test exercises singleflight locally.
+
+```sh
+./bin/just test-runtime '^TestManagedCacheFill$'
+```
 
 ## Connecting an application
 
@@ -36,8 +45,8 @@ the same primitive, tenant, namespace and resource key reach the same
 authority.
 [Protobuf schemas](proto/pintle/v1/) · [Protocol and recovery semantics](docs/PROTOCOL_DRAFT.md)
 
-The examples below use the Go SDK. The inventory store and renderer are
-application code. [SDK setup](sdk/go/pintle/README.md#installation-and-compatibility)
+The examples below use the Go SDK. The inventory store, renderer, cache and
+origin are application code. [SDK setup](sdk/go/pintle/README.md#installation-and-compatibility)
 
 ## Lock
 
@@ -100,6 +109,43 @@ pool := pintle.Resource{Namespace: "images", Key: "render-pool"}
 return sem.WithPermit(ctx, pool, pintle.LeaseOptions{}, func(work context.Context, _ pintle.Lease) error {
     return renderCacheCandidate(work, imageID)
 })
+```
+
+## Singleflight
+
+### Singleflight limits and responsibilities
+
+Callers sharing a key can receive the same result. Include the content version
+and every input that changes the answer in the key. Publish to the shared cache
+before reporting completion. If the producer dies between those operations,
+a waiter can recover the value by rechecking the cache after expiry.
+[Cache-fill contract](docs/adr/ADR-022-singleflight-cache-fill.md)
+
+A producer can resume after a successor has filled the cache. Use atomic
+create-if-absent for an immutable entry or have the cache reject older
+generations. Pintle shares up to 4,096 bytes inline. For larger values,
+the callers can agree to share a small versioned reference instead.
+
+### Go example — fill a catalog cache entry
+
+`CacheFill` checks the cache before joining and again when selected as producer.
+Here the application's `StoreIfCurrent` checks the generation in the same
+operation that stores the value. [Go helper and recovery behavior](sdk/go/pintle/README.md#singleflight-cache-fills)
+
+```go
+key := pintle.Resource{Namespace: "catalog", Key: "v7:blue-shirt"}
+value, err := client.CacheFill(ctx, key,
+    func(work context.Context) ([]byte, bool, error) {
+        return cache.Lookup(work, key)
+    },
+    func(work context.Context, generation uint64) ([]byte, error) {
+        value, err := origin.Read(work, key)
+        if err != nil {
+            return nil, err
+        }
+        return value, cache.StoreIfCurrent(work, key, generation, value)
+    },
+)
 ```
 
 ## Protecting writes after a lease expires

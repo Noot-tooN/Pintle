@@ -146,6 +146,7 @@ func validateOwnership(l Lease) error {
 }
 
 type Client struct {
+	flightRPC     pintlev1connect.SingleflightServiceClient
 	semaphoreRPC  pintlev1connect.SemaphoreServiceClient
 	capacity      uint32
 	rpc           pintlev1connect.LockServiceClient
@@ -182,7 +183,13 @@ func NewWithHTTPClient(endpoint, credential string, httpClient connect.HTTPClien
 	if httpClient == nil {
 		httpClient = &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	}
-	return &Client{semaphoreRPC: pintlev1connect.NewSemaphoreServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), rpc: pintlev1connect.NewLockServiceClient(httpClient, endpoint, connect.WithReadMaxBytes(16384)), credential: credential, leaseSessions: &leaseSessionCache{}}, nil
+	limit := connect.WithReadMaxBytes(16384)
+	return &Client{
+		flightRPC:    pintlev1connect.NewSingleflightServiceClient(httpClient, endpoint, limit),
+		semaphoreRPC: pintlev1connect.NewSemaphoreServiceClient(httpClient, endpoint, limit),
+		rpc:          pintlev1connect.NewLockServiceClient(httpClient, endpoint, limit),
+		credential:   credential, leaseSessions: &leaseSessionCache{},
+	}, nil
 }
 func resource(r Resource) *v1.ResourceId { return &v1.ResourceId{Namespace: r.Namespace, Key: r.Key} }
 func ttl(d time.Duration) (uint32, error) {

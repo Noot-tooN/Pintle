@@ -80,8 +80,8 @@ The adapter waits for storage acknowledgement before sending success.
 
 Recovery windows are enforced on access. Idle authorities can retain the last
 bounded snapshot on disk until the next operation. The local service supports
-explicit observation. A managed Go callback, server-held waiter notification,
-and hosted deployment are separate work.
+explicit observation. The [Go cache-fill helper](../../sdk/go/pintle/README.md#singleflight-cache-fills)
+uses bounded polling. Server-held waiter notification and hosted validation remain open.
 
 ```sh
 ./bin/just test-runtime '^TestSingleflightRecovery$'
@@ -99,3 +99,17 @@ The [controlled-clock test](../../tests/integration/singleflight_storage_test.go
 injects SQL and callback failures inside the transaction and inspects the SQLite
 records around rollback. It exercises completion at the producer deadline and
 receipt recovery one millisecond before, and exactly at, expiry.
+
+The [two-process test](../../tests/integration/cache_fill_process_test.go) kills a
+producer after it atomically publishes to a shared file cache. A waiter already
+attached to the flight recovers the stored value at expiry. The origin log
+contains one read. In a separate run, a paused producer resumes after the
+successor publishes. Atomic create-if-absent preserves the successor's entry.
+Both cases use the compiled local Worker with an injected authority clock.
+
+In the [bounded polling test](../../tests/integration/cache_fill_test.go), ten
+distinct callers miss one key and perform one origin read. A local run with
+all callers admitted before immediate completion used 30 RPCs across 10 generation
+reads, 10 joins, 9 waiter observations and 1 completion. Holding the producer
+for another second used 57 RPCs, including 36 observations. These counts
+depend on timing. Hosted latency and cost remain unmeasured.

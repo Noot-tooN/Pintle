@@ -60,9 +60,9 @@ if err != nil {
 }
 ```
 
-Use `WithLease` for an exclusive lock or `WithPermit` on a semaphore client
-for one permit. Both helpers manage acquisition, renewal and release attempts
-around your callback.
+Use `WithLease` for an exclusive lock, `WithPermit` on a semaphore client for
+one permit, or `CacheFill` to share work on a cache miss. The lease and permit
+helpers manage acquisition, renewal and release attempts around your callback.
 
 Use HTTPS outside loopback. The default HTTP client refuses redirects. For a
 custom transport, use `pintle.NewWithHTTPClient(endpoint, credential, httpClient)`.
@@ -160,7 +160,7 @@ return sem.WithPermit(ctx, pintle.Resource{Namespace: "jobs", Key: "render-pool"
 One acquisition holds one permit. Capacity (1..64) is fixed by the resource's
 first successful grant; mismatches fail explicitly. Weighted permits and resize
 are not implemented. Mutex and semaphore names occupy separate authorities.
-Keep the original client for exclusive locks. The semaphore
+Keep the original client for exclusive locks and cache fills. The semaphore
 client's lease methods operate on individual permits, including `WithLease` if
 called on that client. Use `WithPermit` to make that intent explicit. Its
 low-level API exposes OpenSession, Acquire/TryAcquire, Renew/Release,
@@ -180,6 +180,61 @@ borrows a session, so capacity 64 is not a promise of 64 managed callbacks.
 Keep a bound client instead of calling Semaphore for every job. See the
 [executable example](../../../examples/semaphore/main.go) and
 [precise semantics](../../../docs/adr/ADR-021-unweighted-semaphore.md).
+
+## Singleflight cache fills
+
+On a local Worker with `P2_ENABLED=true` and `PINTLE_SINGLEFLIGHT_ENABLED=true`,
+call `CacheFill` on the client returned by `pintle.New`. Use a shared cache
+and include everything that changes the answer in the resource key. Here the
+application supplies `cache` and `origin`. A cache miss is `hit == false`.
+
+```go
+key := pintle.Resource{Namespace: "catalog", Key: "v7:blue-shirt"}
+value, err := client.CacheFill(ctx, key,
+    func(work context.Context) ([]byte, bool, error) {
+        return cache.Lookup(work, key)
+    },
+    func(work context.Context, generation uint64) ([]byte, error) {
+        value, err := origin.Read(work, key)
+        if err != nil {
+            return nil, err
+        }
+        return value, cache.StoreIfCurrent(work, key, generation, value)
+    },
+)
+```
+
+A cache hit returns immediately. On a miss, callers join one generation. The
+producer rechecks the cache before calling the fill function, and publishes
+to the cache before returning. The store in this example atomically rejects a
+generation below the highest accepted for the same resource. An immutable
+versioned entry with atomic create-if-absent also works. Either approach keeps
+a delayed producer from overwriting a successor. Pass the callback context
+through to both the origin and the cache, and join any work before returning.
+
+The helper calls the fill function at most once per invocation. After a producer
+expires, a waiter rechecks the cache once. It can recover a value even if the
+producer died before reporting completion. A remaining miss returns
+`ErrFlightExpired`. If admission loses a race with a completed generation, a
+remaining miss returns the service's `failed_precondition`. The application
+can explicitly start a new call. Values shared through Pintle are limited to
+4,096 bytes. An oversized fill returns `ErrFlightTooLarge`. A direct cache hit
+uses the cache's own size policy.
+
+Waiters first observe after 100 ms, then double the interval up to 2 seconds.
+The helper bounds the operation at 35 seconds and the producer's cooperative
+work budget at 30 seconds from the first join attempt. Recovery uses separate
+5-second contexts. If completion wins the cancellation race, the waiter receives
+the recorded result. If cancellation wins, the waiter detaches. A producer
+error or panic attempts to settle attached waiters with `ErrFlightFailed`.
+The producer receives its own error or panic.
+
+An ambiguous join or completion is retried with its original inputs. If recovery
+also fails, use `errors.As` with `*pintle.CacheFillRecoveryError` to retrieve
+the prepared join, ticket or completion for the generated client. Keep these
+private. The helper holds recovery data in memory. Applications that must
+resume the same ticket after their own process restarts can journal prepared
+requests with the low-level API. [Singleflight contract](../../../docs/adr/ADR-022-singleflight-cache-fill.md)
 
 ## Low-level sessions and recovery
 

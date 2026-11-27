@@ -119,7 +119,8 @@ See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
 - Singleflight cache-fill development has started. [ADR-022](adr/ADR-022-singleflight-cache-fill.md)
   records the cache-fill contract, executable example and opt-in local Worker/DO
   implementation. Generated clients exercise admission and result recovery across
-  restarts. The managed Go callback remains future work.
+  restarts. The managed Go cache-fill helper also exercises two processes
+  sharing a destination across producer death and late publication.
 - Remaining helpers: cooldown; rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
 - Validate *true* portability using a native Rust + FDB/etcd backend; do not build a large generic backend framework for hypothetical capabilities.
 

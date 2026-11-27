@@ -1,9 +1,11 @@
-// Package pintle provides distributed locks and semaphore permits over binary unary Connect.
+// Package pintle provides distributed locks, semaphore permits and experimental
+// singleflight cache fills over binary unary Connect.
 //
 // Create a Client with New. Use Client.WithLease for an exclusive lock or bind
 // a pool capacity with Client.Semaphore and use Client.WithPermit for one slot.
 // Both helpers acquire, renew and attempt release around a callback. Pass its
-// context to protected work and enforce fencing at the destination.
+// context to protected work and enforce fencing at the destination. For shared
+// cache misses, Client.CacheFill coordinates one producer per generation.
 //
 // For explicit recovery/persistence, OpenSession for one Resource. Prepare operations
 // with Session.NewAcquire, NewWaitAcquire, NewRenew or NewRelease. Retain each
