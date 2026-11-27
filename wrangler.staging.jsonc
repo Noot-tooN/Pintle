@@ -10,6 +10,7 @@
   },
   "vars": {
     "P2_ENABLED": "true",
+    "PINTLE_SINGLEFLIGHT_ENABLED": "true",
     "PINTLE_AUTH_MODE": "static",
     "PINTLE_METRICS": "true"
   },

@@ -13,8 +13,9 @@ language with a Pintle SDK.
 | [Singleflight](#singleflight) | Concurrent callers need the same result. | Fetch a catalog entry once for overlapping cache misses. |
 
 **Release status.** The lock and semaphore are pinned at `rc-2026-11-27.2` and
-have passed bounded Cloudflare staging tests. Singleflight is experimental and
-has passed local two-process recovery tests. Hosted validation is pending.
+have passed bounded Cloudflare staging tests. Experimental singleflight has
+also passed hosted cache-fill, producer crash, waiter cancellation and inline
+size checks. [Singleflight staging evidence](docs/adr/ADR-022-singleflight-cache-fill.md#cloudflare-staging)
 The API is unpublished and may change.
 [Release checklist](docs/release-checklist.md)
 

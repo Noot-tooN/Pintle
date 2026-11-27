@@ -81,7 +81,7 @@ The adapter waits for storage acknowledgement before sending success.
 Recovery windows are enforced on access. Idle authorities can retain the last
 bounded snapshot on disk until the next operation. The local service supports
 explicit observation. The [Go cache-fill helper](../../sdk/go/pintle/README.md#singleflight-cache-fills)
-uses bounded polling. Server-held waiter notification and hosted validation remain open.
+uses bounded polling. Server-held waiter notification remains open.
 
 ```sh
 ./bin/just test-runtime '^TestSingleflightRecovery$'
@@ -112,4 +112,28 @@ distinct callers miss one key and perform one origin read. A local run with
 all callers admitted before immediate completion used 30 RPCs across 10 generation
 reads, 10 joins, 9 waiter observations and 1 completion. Holding the producer
 for another second used 57 RPCs, including 36 observations. These counts
-depend on timing. Hosted latency and cost remain unmeasured.
+depend on timing.
+
+## Cloudflare staging
+
+On 2026-11-27 the normal build of `ee5c6b4` ran on `pintle-staging` with
+`PINTLE_SINGLEFLIGHT_ENABLED=true`, version `539c94c7-6bfc-4e8f-9af0-bf230ca993fd`.
+The Go clients ran on the test host and shared a temporary file as the
+application cache. All coordination requests went over HTTPS to Cloudflare.
+The final run used four fresh resource keys and made 70 RPCs. The two crash
+cases took 30.93 s and 30.41 s from confirmed producer admission to the verified
+outcome, including the explicit retry in the first case.
+
+| Scenario | Observed result |
+| --- | --- |
+| Overlapping misses | One producer filled the cache. An attached waiter received the same 4,096 bytes. A later cache hit made zero Pintle calls. |
+| Waiter cancellation | Cancellation before completion returned `context.Canceled` to that waiter. The producer and another waiter finished normally. When completion committed first, a late cancellation returned the original value. |
+| Producer killed before cache publication | An admitted waiter observed `ErrFlightExpired` after the 30-second authority deadline. An explicit new call filled the cache in generation 2. |
+| Producer killed after cache publication | The producer died before reporting completion. At expiry the admitted waiter rechecked the shared cache and returned the published value without calling the origin. |
+| Oversized inline result | At 4,097 bytes both producer and waiter received `ErrFlightTooLarge` with no partial value. A later direct cache hit returned all 4,097 bytes. |
+
+To repeat, set the account and origin as described in the [staging runbook](../staging.md)
+and run `./bin/just test-staging-singleflight`. The [hosted test](../../tests/hosted/singleflight_test.go)
+waits for admission before signalling or killing a client. Cloudflare runs its normal
+clock throughout. These checks cover functional behavior on one staging origin.
+Multi-region performance, sustained polling cost and platform failover remain unmeasured.

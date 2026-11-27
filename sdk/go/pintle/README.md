@@ -183,7 +183,7 @@ Keep a bound client instead of calling Semaphore for every job. See the
 
 ## Singleflight cache fills
 
-On a local Worker with `P2_ENABLED=true` and `PINTLE_SINGLEFLIGHT_ENABLED=true`,
+On a Worker with `P2_ENABLED=true` and `PINTLE_SINGLEFLIGHT_ENABLED=true`,
 call `CacheFill` on the client returned by `pintle.New`. Use a shared cache
 and include everything that changes the answer in the resource key. Here the
 application supplies `cache` and `origin`. A cache miss is `hit == false`.

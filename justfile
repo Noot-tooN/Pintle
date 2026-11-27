@@ -179,7 +179,7 @@ staging-check:
     assert.deepEqual(c.observability, {enabled:true});
     assert.equal(c.routes, undefined);
     assert.equal(c.route, undefined);
-    assert.deepEqual(c.vars, {P2_ENABLED:'true', PINTLE_AUTH_MODE:'static', PINTLE_METRICS:'true'});
+    assert.deepEqual(c.vars, {P2_ENABLED:'true', PINTLE_SINGLEFLIGHT_ENABLED:'true', PINTLE_AUTH_MODE:'static', PINTLE_METRICS:'true'});
     assert.deepEqual(c.build, {command:'./bin/just build'});
     assert.deepEqual(c.durable_objects, {bindings:[{name:'AUTHORITIES',class_name:'PintleAuthority'}]});
     assert.deepEqual(c.migrations, [{tag:'p0-sqlite-v1',new_sqlite_classes:['PintleAuthority']}]);
@@ -220,6 +220,10 @@ test-staging:
     : "${PINTLE_STAGING_URL:?Set the deployed pintle-staging workers.dev URL}"
     : "${PINTLE_STAGING_TOKEN:?Set the staging application token}"
     PINTLE_RUN_HOSTED=1 ./bin/go test -race -count=1 -timeout=3m -v ./tests/hosted -run '^TestStaging$'
+
+# Test singleflight with real expiry and abrupt producer death on the existing staging Worker.
+test-staging-singleflight: staging-check staging-origin
+    PINTLE_RUN_HOSTED_SINGLEFLIGHT=1 ./bin/go test -race -count=1 -timeout=3m -v ./tests/hosted -run '^TestStagingSingleflight$'
 
 # Live staging logs; caller must discard raw metadata and retain only allowlisted events.
 staging-tail:

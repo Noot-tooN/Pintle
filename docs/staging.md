@@ -46,6 +46,7 @@ was added. Command orchestration stays in the root `justfile`.
 | `./bin/just staging-deploy` | **Remote mutation**, only after authorization; checks configuration/account, builds and deploys only the staging target |
 | `./bin/just staging-secret` | **Remote mutation**, only after authorization; hidden prompt for staging `PINTLE_CREDENTIALS` JSON |
 | `./bin/just test-staging` | **Remote test mutations**, only when explicitly invoked with endpoint/token; creates test sessions/locks within the request budget |
+| `./bin/just test-staging-singleflight` | Exercises four fresh staging keys with the managed Go client, including two producer process deaths and real-time expiry. Uses the existing private staging credential. |
 | `./bin/just staging-origin` | Read-only check that the staging URL belongs to the selected account |
 | `./bin/just test-staging-lifecycle` | **Remote mutations**: build/deploy normal staging, redeploy with admitted work, rotate the application key twice, observe alarms/instance replacement |
 | `./bin/just test-staging-alarms` | **Remote test mutations** on the existing deployment: observe expiry/idle alarms through persisted logs; no deployment or secret update |
