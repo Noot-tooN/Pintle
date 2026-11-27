@@ -12,10 +12,10 @@ language with a Pintle SDK.
 | [Semaphore](#semaphore) | A group of workers shares a fixed number of permits. | Let six render jobs share two permits. |
 | [Singleflight](#singleflight) | Concurrent callers need the same result. | Fetch a catalog entry once for overlapping cache misses. |
 
-**Release status.** The lock and semaphore are pinned at `rc-2026-11-27.2` and
-have passed bounded Cloudflare staging tests. Experimental singleflight has
-also passed hosted cache-fill, producer crash, waiter cancellation and inline
-size checks. [Singleflight staging evidence](docs/adr/ADR-022-singleflight-cache-fill.md#cloudflare-staging)
+**Release status.** Development candidate `rc-2026-11-27.3` includes the lock,
+semaphore and experimental opt-in singleflight. All three have passed bounded
+Cloudflare staging checks. Singleflight was exercised at its 16-waiter limit
+and across Worker redeploys. [Singleflight staging results](docs/singleflight-staging-results.md)
 The API is unpublished and may change.
 [Release checklist](docs/release-checklist.md)
 

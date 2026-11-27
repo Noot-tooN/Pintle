@@ -136,4 +136,6 @@ To repeat, set the account and origin as described in the [staging runbook](../s
 and run `./bin/just test-staging-singleflight`. The [hosted test](../../tests/hosted/singleflight_test.go)
 waits for admission before signalling or killing a client. Cloudflare runs its normal
 clock throughout. These checks cover functional behavior on one staging origin.
-Multi-region performance, sustained polling cost and platform failover remain unmeasured.
+A subsequent staging run measured polling with up to 16 waiters on one key
+and verified that the original producer and waiter tickets could finish a
+pending flight on a new-version Durable Object. [Hot-key measurements and redeploy results](../singleflight-staging-results.md)
