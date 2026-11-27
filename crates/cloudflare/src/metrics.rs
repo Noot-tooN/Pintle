@@ -23,6 +23,16 @@ pub fn authority(instance: Option<&str>, operation: &str, result: &Result<Respon
     }
 }
 pub fn method(path: &str) -> &'static str {
+    if let Some(method) = path.strip_prefix(crate::singleflight_rpc::PREFIX) {
+        return match method {
+            "GetFlightGeneration" => "GetFlightGeneration",
+            "JoinFlight" => "JoinFlight",
+            "ObserveFlight" => "ObserveFlight",
+            "CompleteFlight" => "CompleteFlight",
+            "CancelFlight" => "CancelFlight",
+            _ => "unknown",
+        };
+    }
     match path
         .strip_prefix("/pintle.v1.LockService/")
         .or_else(|| path.strip_prefix("/pintle.v1.SemaphoreService/"))

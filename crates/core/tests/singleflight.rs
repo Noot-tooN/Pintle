@@ -165,3 +165,78 @@ fn bounded_recovery_preserves_receipts_under_pressure_and_reclaims_at_equality()
         Err(Error::UnknownTicket)
     );
 }
+
+#[test]
+fn durable_restore_preserves_large_generations_and_fails_closed_at_exhaustion() {
+    use pintle_core::singleflight::durable::{Action, Authority, Rejection, Reply};
+    for previous in [(1_u64 << 53) + 1, u64::MAX - 1] {
+        let snapshot = serde_json::json!({
+            "group":{"clock":1,"last_generation":previous,"flights":{}},"members":{}
+        });
+        let mut authority = Authority::restore(&snapshot.to_string()).unwrap();
+        let g = previous + 1;
+        assert_eq!(
+            authority.apply(1, "alice", Action::Generation, ""),
+            Ok(Reply::Generation(g))
+        );
+        let nonce = "ab".repeat(32);
+        let join = Action::Join {
+            generation: g,
+            request_id: "r".into(),
+        };
+        assert_eq!(
+            authority.apply(1, "alice", join.clone(), &nonce),
+            Ok(Reply::Joined {
+                ticket: nonce.clone(),
+                producer: true
+            })
+        );
+        let mut restored = Authority::restore(&serde_json::to_string(&authority).unwrap()).unwrap();
+        assert_eq!(
+            restored.apply(1, "alice", join, ""),
+            Ok(Reply::Joined {
+                ticket: nonce,
+                producer: true
+            })
+        );
+        if g == u64::MAX {
+            assert_eq!(
+                restored.apply(1 + FILL_TIMEOUT_MS, "alice", Action::Generation, ""),
+                Err(Rejection::Core(Error::GenerationExhausted))
+            );
+        }
+    }
+}
+
+#[test]
+fn durable_restore_rejects_missing_receipts_and_inconsistent_roles() {
+    use pintle_core::singleflight::durable::{Action, Authority};
+    let mut authority = Authority::default();
+    for (i, id) in ["producer", "waiter"].into_iter().enumerate() {
+        authority
+            .apply(
+                1,
+                "alice",
+                Action::Join {
+                    generation: 1,
+                    request_id: id.to_owned(),
+                },
+                &format!("{i:064x}"),
+            )
+            .unwrap();
+    }
+    let state = serde_json::to_value(&authority).unwrap();
+    for (path, replacement) in [
+        ("/members", serde_json::json!({})),
+        (
+            "/members/1/1/capability",
+            state["members"]["1"][0]["capability"].clone(),
+        ),
+        ("/group/flights/1/cancelled_waiters", serde_json::json!([])),
+        ("/group/last_generation", serde_json::json!(0)),
+    ] {
+        let mut corrupt = state.clone();
+        *corrupt.pointer_mut(path).unwrap() = replacement;
+        assert!(Authority::restore(&corrupt.to_string()).is_err());
+    }
+}

@@ -3,6 +3,7 @@ mod lease_rpc;
 mod metrics;
 mod notify;
 mod schedule;
+mod singleflight_rpc;
 
 use pintle_core::Transaction;
 use serde::{Deserialize, Serialize};

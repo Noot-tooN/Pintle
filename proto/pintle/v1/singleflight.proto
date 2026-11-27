@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package pintle.v1;
+
+import "pintle/v1/lock.proto";
+
+option go_package = "github.com/Noot-tooN/Pintle/gen/go/pintle/v1;pintlev1";
+
+// Experimental unary cache-fill operations. An admission attempt is scoped to
+// its resource, subject, generation and immutable request_id.
+service SingleflightService {
+  rpc GetFlightGeneration(GetFlightGenerationRequest) returns (GetFlightGenerationResponse);
+  rpc JoinFlight(JoinFlightRequest) returns (JoinFlightResponse);
+  rpc ObserveFlight(ObserveFlightRequest) returns (ObserveFlightResponse);
+  rpc CompleteFlight(CompleteFlightRequest) returns (CompleteFlightResponse);
+  rpc CancelFlight(CancelFlightRequest) returns (CancelFlightResponse);
+}
+message GetFlightGenerationRequest {
+  ResourceId resource = 1;
+}
+message GetFlightGenerationResponse {
+  string generation = 1;
+}
+message JoinFlightRequest {
+  ResourceId resource = 1;
+  string generation = 2;
+  string request_id = 3;
+}
+message JoinFlightResponse {
+  // Private capability bound to resource and authenticated subject.
+  string ticket = 1;
+  // Historical assignment. Observe the ticket to recover its current outcome.
+  bool producer = 2;
+}
+message ObserveFlightRequest {
+  ResourceId resource = 1;
+  string ticket = 2;
+}
+message CancelFlightRequest {
+  ResourceId resource = 1;
+  string ticket = 2;
+}
+message CompleteFlightRequest {
+  ResourceId resource = 1;
+  string ticket = 2;
+  oneof completion {
+    bytes value = 3;
+    FlightFailure failure = 4;
+  }
+}
+enum FlightFailure {
+  FLIGHT_FAILURE_UNSPECIFIED = 0;
+  FLIGHT_FAILURE_FILL_FAILED = 1;
+  FLIGHT_FAILURE_RESULT_TOO_LARGE = 2;
+}
+enum FlightStatus {
+  FLIGHT_STATUS_UNSPECIFIED = 0;
+  FLIGHT_STATUS_PENDING = 1;
+  FLIGHT_STATUS_CANCELLED = 2;
+  FLIGHT_STATUS_FILL_FAILED = 3;
+  FLIGHT_STATUS_RESULT_TOO_LARGE = 4;
+  FLIGHT_STATUS_LEADER_EXPIRED = 5;
+}
+message FlightObservation {
+  oneof outcome {
+    bytes value = 1;
+    FlightStatus status = 2;
+  }
+}
+message ObserveFlightResponse {
+  FlightObservation observation = 1;
+}
+message CompleteFlightResponse {
+  FlightObservation observation = 1;
+}
+message CancelFlightResponse {
+  FlightObservation observation = 1;
+}

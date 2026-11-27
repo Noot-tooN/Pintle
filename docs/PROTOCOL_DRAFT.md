@@ -38,6 +38,15 @@ issues a new resource-wide exact decimal token. See [ADR-021](adr/ADR-021-unweig
 for queue, storage and compatibility decisions. Shared RPC envelopes have a
 file-scoped Buf uniqueness exception; generated code and breaking checks remain.
 
+## Experimental local singleflight service
+
+The [singleflight schema](../proto/pintle/v1/singleflight.proto) defines five unary
+RPCs. After a cache miss, read the admission generation and retain it with the
+request ID across retries. A successful join returns a private, subject-bound
+ticket. Use it to observe, complete or cancel the fill according to the assigned
+role. The [cache-fill contract](adr/ADR-022-singleflight-cache-fill.md#local-implementation)
+describes ambiguous replies, expiry, result limits and the local opt-in flag.
+
 ## RPCs (server-side authoritative)
 
 ```text

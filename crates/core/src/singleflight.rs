@@ -2,7 +2,10 @@
 //! serialize calls, deduplicate admissions and bind tickets to their resource and
 //! principal. A ticket is a core-local index, never a wire ownership capability.
 use crate::lease::MAX_TIME_MS;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+pub mod durable;
 
 pub const MAX_RESULT_BYTES: usize = 4096;
 pub const FILL_TIMEOUT_MS: u64 = 30_000;
@@ -35,7 +38,7 @@ pub enum Completion<'a> {
     TooLarge,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Outcome {
     Value(Vec<u8>),
     FillFailed,
@@ -43,14 +46,14 @@ pub enum Outcome {
     ResultTooLarge,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Observation {
     Pending,
     Cancelled,
     Finished(Outcome),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Error {
     Clock,
     Capacity,
@@ -59,17 +62,21 @@ pub enum Error {
     WrongRole,
 }
 
+#[derive(Serialize, Deserialize)]
 enum Phase {
     Running { deadline: u64 },
     Finished { at: u64, outcome: Outcome },
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Flight {
     phase: Phase,
     cancelled_waiters: Vec<bool>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Group {
     clock: u64,
     last_generation: u64,

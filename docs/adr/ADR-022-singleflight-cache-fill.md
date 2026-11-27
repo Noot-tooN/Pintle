@@ -42,7 +42,7 @@ Recovery expires at exactly 60 seconds after completion or the producer's
 deadline. Expired tickets return `UnknownTicket`. Regressing authority time is
 rejected, and generation identifiers must never wrap.
 
-## Implementation and next integration gate
+## Local implementation
 
 The [Rust core](../../crates/core/src/singleflight.rs) models one serialized
 resource. Run the [cache-fill example](../../crates/core/examples/singleflight_cache_fill.rs)
@@ -53,19 +53,49 @@ and the [boundary tests](../../crates/core/tests/singleflight.rs) locally.
 ./bin/cargo test --locked -p pintle-core --test singleflight
 ```
 
-The next slice is durable admission and completion in a local Worker/DO.
-Atomically persist the generation counter, authority clock, membership, result
-and session receipt. Scope the authority by tenant, namespace, primitive and
-resource. Bind each ticket to the authenticated subject and authorize producer
-completion separately. A core ticket is an index into one resource. Only the
-verified adapter may use it. A lost admission reply must recover the same
-ticket, including after cancellation. Reusing an operation ID with a different
-payload must produce a conflict.
+The local Worker exposes the [experimental unary Connect service](../../proto/pintle/v1/singleflight.proto)
+when both `P2_ENABLED=true` and `PINTLE_SINGLEFLIGHT_ENABLED=true` are set.
+It uses the existing authenticated gateway and a distinct SQLite Durable Object
+per tenant, namespace, primitive and resource. One synchronous transaction stores
+the authority clock, generation counter, memberships, private tickets and result.
+The adapter waits for storage acknowledgement before sending success.
 
-Exercise two independent clients, a lost completion reply, object restart,
-transport size rejection and disconnect/reconnect under local Wrangler before
-exposing the Go helper. A disconnected waiter may resume its ticket. Explicit
-cancellation must reconcile a possible completion race. For oversized results
-the SDK should send the control message before serializing the value so an HTTP
-size rejection cannot strand the other callers. The native tests use an
-in-memory authority and injected time.
+1. Call `GetFlightGeneration` after a cache miss. Prepare and retain the
+   resource, generation and request ID before calling `JoinFlight`. Replay that
+   exact admission after an ambiguous reply. Each authenticated subject gets its
+   own receipt. If the generation closed before admission, recheck the cache
+   before preparing a fresh attempt.
+2. Preserve the returned ticket as a credential. The producer flag records the
+   original assignment. Use `ObserveFlight` to recover the current state. A lost
+   reply or a pending observation cannot establish whether an external callback
+   already ran. A waiter may disconnect and later observe the same ticket.
+3. Only the producer can call `CompleteFlight`. A retry with the same outcome
+   recovers the recorded result. A different outcome conflicts. A waiter can
+   call `CancelFlight` and replay it safely. Expired receipts cannot admit a
+   caller to a newer generation.
+4. Use the explicit oversize failure when the producer detects more than 4,096
+   bytes. Inline values above that limit in an accepted envelope also settle
+   the flight as oversized. An envelope above the 8,192-byte transport limit
+   is rejected before dispatch, so the producer must send the small marker.
+
+Recovery windows are enforced on access. Idle authorities can retain the last
+bounded snapshot on disk until the next operation. The local service supports
+explicit observation. A managed Go callback, server-held waiter notification,
+and hosted deployment are separate work.
+
+```sh
+./bin/just test-runtime '^TestSingleflightRecovery$'
+./bin/just test-hardening '^TestSingleflightStorage$'
+```
+
+The [normal Worker test](../../tests/integration/singleflight_test.go) drops
+successful admission, completion and cancellation replies at the HTTP client.
+After each dropped reply it stops Wrangler and opens the same SQLite state in
+a new process. It compares the reissued ticket or result with the discarded
+response. It also exercises concurrent retries, subject and resource isolation,
+changed completions, empty values and both size limits.
+
+The [controlled-clock test](../../tests/integration/singleflight_storage_test.go)
+injects SQL and callback failures inside the transaction and inspects the SQLite
+records around rollback. It exercises completion at the producer deadline and
+receipt recovery one millisecond before, and exactly at, expiry.

@@ -117,8 +117,9 @@ See [ADR-018](adr/ADR-018-oss-release-and-saas-boundaries.md).
   per grant, existing recovery/FIFO lifecycle, Go WithPermit and executable example.
   Hosted semaphore validation and review remain; no publication/deployment implied.
 - Singleflight cache-fill development has started. [ADR-022](adr/ADR-022-singleflight-cache-fill.md)
-  records the native state transitions and executable example. The next gate is
-  atomic admission and result recovery across a local Worker/DO restart.
+  records the cache-fill contract, executable example and opt-in local Worker/DO
+  implementation. Generated clients exercise admission and result recovery across
+  restarts. The managed Go callback remains future work.
 - Remaining helpers: cooldown; rate-limits/quotas; PostgreSQL fenced-transaction integration; additional language SDKs, in that order only if supported by user need and shared primitives.
 - Validate *true* portability using a native Rust + FDB/etcd backend; do not build a large generic backend framework for hypothetical capabilities.
 

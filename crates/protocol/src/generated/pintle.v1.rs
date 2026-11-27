@@ -300,3 +300,161 @@ impl WaitState {
         }
     }
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetFlightGenerationRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetFlightGenerationResponse {
+    #[prost(string, tag = "1")]
+    pub generation: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct JoinFlightRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+    #[prost(string, tag = "2")]
+    pub generation: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub request_id: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct JoinFlightResponse {
+    /// Private capability bound to resource and authenticated subject.
+    #[prost(string, tag = "1")]
+    pub ticket: ::prost::alloc::string::String,
+    /// Historical assignment. Observe the ticket to recover its current outcome.
+    #[prost(bool, tag = "2")]
+    pub producer: bool,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ObserveFlightRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+    #[prost(string, tag = "2")]
+    pub ticket: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CancelFlightRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+    #[prost(string, tag = "2")]
+    pub ticket: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CompleteFlightRequest {
+    #[prost(message, optional, tag = "1")]
+    pub resource: ::core::option::Option<ResourceId>,
+    #[prost(string, tag = "2")]
+    pub ticket: ::prost::alloc::string::String,
+    #[prost(oneof = "complete_flight_request::Completion", tags = "3, 4")]
+    pub completion: ::core::option::Option<complete_flight_request::Completion>,
+}
+/// Nested message and enum types in `CompleteFlightRequest`.
+pub mod complete_flight_request {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Completion {
+        #[prost(bytes, tag = "3")]
+        Value(::prost::alloc::vec::Vec<u8>),
+        #[prost(enumeration = "super::FlightFailure", tag = "4")]
+        Failure(i32),
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FlightObservation {
+    #[prost(oneof = "flight_observation::Outcome", tags = "1, 2")]
+    pub outcome: ::core::option::Option<flight_observation::Outcome>,
+}
+/// Nested message and enum types in `FlightObservation`.
+pub mod flight_observation {
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Outcome {
+        #[prost(bytes, tag = "1")]
+        Value(::prost::alloc::vec::Vec<u8>),
+        #[prost(enumeration = "super::FlightStatus", tag = "2")]
+        Status(i32),
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ObserveFlightResponse {
+    #[prost(message, optional, tag = "1")]
+    pub observation: ::core::option::Option<FlightObservation>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CompleteFlightResponse {
+    #[prost(message, optional, tag = "1")]
+    pub observation: ::core::option::Option<FlightObservation>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CancelFlightResponse {
+    #[prost(message, optional, tag = "1")]
+    pub observation: ::core::option::Option<FlightObservation>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FlightFailure {
+    Unspecified = 0,
+    FillFailed = 1,
+    ResultTooLarge = 2,
+}
+impl FlightFailure {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FLIGHT_FAILURE_UNSPECIFIED",
+            Self::FillFailed => "FLIGHT_FAILURE_FILL_FAILED",
+            Self::ResultTooLarge => "FLIGHT_FAILURE_RESULT_TOO_LARGE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FLIGHT_FAILURE_UNSPECIFIED" => Some(Self::Unspecified),
+            "FLIGHT_FAILURE_FILL_FAILED" => Some(Self::FillFailed),
+            "FLIGHT_FAILURE_RESULT_TOO_LARGE" => Some(Self::ResultTooLarge),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FlightStatus {
+    Unspecified = 0,
+    Pending = 1,
+    Cancelled = 2,
+    FillFailed = 3,
+    ResultTooLarge = 4,
+    LeaderExpired = 5,
+}
+impl FlightStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FLIGHT_STATUS_UNSPECIFIED",
+            Self::Pending => "FLIGHT_STATUS_PENDING",
+            Self::Cancelled => "FLIGHT_STATUS_CANCELLED",
+            Self::FillFailed => "FLIGHT_STATUS_FILL_FAILED",
+            Self::ResultTooLarge => "FLIGHT_STATUS_RESULT_TOO_LARGE",
+            Self::LeaderExpired => "FLIGHT_STATUS_LEADER_EXPIRED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FLIGHT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "FLIGHT_STATUS_PENDING" => Some(Self::Pending),
+            "FLIGHT_STATUS_CANCELLED" => Some(Self::Cancelled),
+            "FLIGHT_STATUS_FILL_FAILED" => Some(Self::FillFailed),
+            "FLIGHT_STATUS_RESULT_TOO_LARGE" => Some(Self::ResultTooLarge),
+            "FLIGHT_STATUS_LEADER_EXPIRED" => Some(Self::LeaderExpired),
+            _ => None,
+        }
+    }
+}
