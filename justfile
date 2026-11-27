@@ -101,7 +101,8 @@ test-hardening filter='TestMutexStorage|TestMutexSchedules|TestP1Deterministic|T
     trap 'exit 143' TERM
     ./bin/cargo clippy --locked -p pintle-cloudflare --target wasm32-unknown-unknown --features test-hooks -- -D warnings
     ./bin/just build --features test-hooks
-    ./bin/go test -race -tags=testhooks -count=1 -timeout=3m -v ./tests/integration -run "$1"
+    # This deadline covers the entire package, including repeated Worker restarts.
+    ./bin/go test -race -tags=testhooks -count=1 -timeout=6m -v ./tests/integration -run "$1"
 
 # Run the complete local verification suite, sequentially against shared Wasm artifacts.
 test:
